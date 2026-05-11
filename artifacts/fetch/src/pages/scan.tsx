@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, ImagePlus, RotateCcw } from "lucide-react";
+import { Camera, ImagePlus, RotateCcw, AlertTriangle, Leaf, CheckCircle2, X } from "lucide-react";
 import { HealthRing } from "@/components/health-ring";
 import { fileToResizedDataUrl } from "@/lib/image";
 
@@ -177,6 +177,59 @@ export default function ScanPage() {
                   <div className="font-serif text-xl">{val}<span className="text-xs ml-0.5 text-muted-foreground">{unit}</span></div>
                 </div>
               ))}
+            </div>
+            {scan.allergens.length ? (
+              <div
+                className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 space-y-1.5"
+                data-testid="section-allergen-warnings"
+                role="alert"
+              >
+                <div className="flex items-center gap-1.5 text-destructive font-semibold text-sm">
+                  <AlertTriangle className="w-4 h-4" /> Allergen alert
+                </div>
+                <ul className="text-xs space-y-0.5">
+                  {scan.allergens.map((a, i) => (
+                    <li key={i} data-testid={`allergen-${a.allergen}`}>
+                      <span className="font-medium capitalize">{a.allergen.replace(/_/g, " ")}</span>
+                      <span className="text-muted-foreground"> · {a.severity.replace("_", " ")}</span>
+                      {a.reason ? <span className="text-muted-foreground"> — {a.reason}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" data-testid="section-dietary-compliance">
+              {(
+                [
+                  ["vegetarian", "Vegetarian"],
+                  ["vegan", "Vegan"],
+                  ["glutenFree", "Gluten-free"],
+                  ["dairyFree", "Dairy-free"],
+                  ["pescatarian", "Pescatarian"],
+                  ["keto", "Keto"],
+                ] as const
+              ).map(([key, label]) => {
+                const ok = Boolean(scan.dietaryCompliance[key]);
+                return (
+                  <div
+                    key={key}
+                    className={`rounded-lg p-2 text-xs flex items-center gap-1.5 ${
+                      ok ? "bg-secondary/30 text-foreground" : "bg-muted/50 text-muted-foreground line-through"
+                    }`}
+                    data-testid={`compliance-${key}`}
+                  >
+                    {ok ? <CheckCircle2 className="w-3.5 h-3.5 text-secondary-foreground" /> : <X className="w-3.5 h-3.5" />}
+                    {label}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-3" data-testid="section-environmental-score">
+              <Leaf className="w-4 h-4 text-secondary-foreground" />
+              <div className="flex-1">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Environmental impact</div>
+                <div className="font-serif text-base">{scan.environmentalScore}/100 <span className="text-xs text-muted-foreground">{scan.environmentalScore >= 70 ? "low" : scan.environmentalScore >= 40 ? "moderate" : "high"} footprint</span></div>
+              </div>
             </div>
             {scan.ingredients.length ? (
               <div>

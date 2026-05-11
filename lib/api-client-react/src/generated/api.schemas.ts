@@ -79,8 +79,25 @@ export interface UserProfileUpdate {
   cuisinePreferences?: string[];
 }
 
+export type MemoryTier = (typeof MemoryTier)[keyof typeof MemoryTier];
+
+export const MemoryTier = {
+  stable_profile: "stable_profile",
+  inferred_preferences: "inferred_preferences",
+  contextual_state: "contextual_state",
+} as const;
+
+export type MemorySource = (typeof MemorySource)[keyof typeof MemorySource];
+
+export const MemorySource = {
+  user: "user",
+  inferred: "inferred",
+} as const;
+
 export interface MemoryFact {
   id: string;
+  tier: MemoryTier;
+  source: MemorySource;
   /** e.g. preference, allergy, goal, dislike, routine. */
   category: string;
   content: string;
@@ -88,6 +105,7 @@ export interface MemoryFact {
 }
 
 export interface MemoryFactInput {
+  tier?: MemoryTier;
   /** @minLength 1 */
   category: string;
   /** @minLength 1 */
@@ -109,6 +127,30 @@ export interface ScanIngredient {
   amount: string;
 }
 
+export interface DietaryCompliance {
+  vegetarian: boolean;
+  vegan: boolean;
+  glutenFree: boolean;
+  dairyFree: boolean;
+  pescatarian: boolean;
+  keto: boolean;
+}
+
+export type AllergenWarningSeverity =
+  (typeof AllergenWarningSeverity)[keyof typeof AllergenWarningSeverity];
+
+export const AllergenWarningSeverity = {
+  trace: "trace",
+  contains: "contains",
+  may_contain: "may_contain",
+} as const;
+
+export interface AllergenWarning {
+  allergen: string;
+  severity: AllergenWarningSeverity;
+  reason: string;
+}
+
 export interface Scan {
   id: string;
   userId: string;
@@ -126,6 +168,14 @@ export interface Scan {
    * @maximum 100
    */
   healthScore: number;
+  /**
+   * Environmental impact score (0-100, higher is better/lower-impact).
+   * @minimum 0
+   * @maximum 100
+   */
+  environmentalScore: number;
+  dietaryCompliance: DietaryCompliance;
+  allergens: AllergenWarning[];
   ingredients: ScanIngredient[];
   tags: string[];
   createdAt: string;

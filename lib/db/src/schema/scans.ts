@@ -17,6 +17,21 @@ export interface ScanIngredient {
   amount: string;
 }
 
+export interface DietaryCompliance {
+  vegetarian: boolean;
+  vegan: boolean;
+  glutenFree: boolean;
+  dairyFree: boolean;
+  pescatarian: boolean;
+  keto: boolean;
+}
+
+export interface AllergenWarning {
+  allergen: string;
+  severity: "trace" | "contains" | "may_contain";
+  reason: string;
+}
+
 export const scansTable = pgTable(
   "scans",
   {
@@ -34,8 +49,15 @@ export const scansTable = pgTable(
     fiber: doublePrecision("fiber").notNull().default(0),
     sugar: doublePrecision("sugar").notNull().default(0),
     healthScore: integer("health_score").notNull().default(50),
+    environmentalScore: integer("environmental_score").notNull().default(50),
+    dietaryCompliance: jsonb("dietary_compliance")
+      .$type<DietaryCompliance>()
+      .notNull()
+      .default(sql`'{"vegetarian":false,"vegan":false,"glutenFree":false,"dairyFree":false,"pescatarian":false,"keto":false}'::jsonb`),
+    allergens: jsonb("allergens").$type<AllergenWarning[]>().notNull().default(sql`'[]'::jsonb`),
     ingredients: jsonb("ingredients").$type<ScanIngredient[]>().notNull().default(sql`'[]'::jsonb`),
     tags: jsonb("tags").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    rawAnalysis: jsonb("raw_analysis").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("idx_scans_user_created").on(table.userId, table.createdAt)],

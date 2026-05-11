@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./allergenWarning";
+export * from "./allergenWarningSeverity";
 export * from "./authorizationSessionHeaderParameter";
 export * from "./authUser";
 export * from "./authUserEnvelope";
 export * from "./beginBrowserLoginParams";
+export * from "./dietaryCompliance";
 export * from "./errorEnvelope";
 export * from "./fridgeItem";
 export * from "./fridgeItemInput";
@@ -20,6 +23,8 @@ export * from "./homeSummary";
 export * from "./logoutSuccess";
 export * from "./memoryFact";
 export * from "./memoryFactInput";
+export * from "./memorySource";
+export * from "./memoryTier";
 export * from "./mobileTokenExchangeRequest";
 export * from "./mobileTokenExchangeSuccess";
 export * from "./recipe";

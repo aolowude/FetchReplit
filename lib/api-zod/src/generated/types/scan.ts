@@ -5,6 +5,8 @@
  * Fetch — AI-powered food discovery and nutrition management
  * OpenAPI spec version: 0.1.0
  */
+import type { AllergenWarning } from "./allergenWarning";
+import type { DietaryCompliance } from "./dietaryCompliance";
 import type { ScanIngredient } from "./scanIngredient";
 
 export interface Scan {
@@ -24,6 +26,14 @@ export interface Scan {
    * @maximum 100
    */
   healthScore: number;
+  /**
+   * Environmental impact score (0-100, higher is better/lower-impact).
+   * @minimum 0
+   * @maximum 100
+   */
+  environmentalScore: number;
+  dietaryCompliance: DietaryCompliance;
+  allergens: AllergenWarning[];
   ingredients: ScanIngredient[];
   tags: string[];
   createdAt: Date;

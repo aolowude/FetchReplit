@@ -5,9 +5,13 @@
  * Fetch — AI-powered food discovery and nutrition management
  * OpenAPI spec version: 0.1.0
  */
+import type { MemorySource } from "./memorySource";
+import type { MemoryTier } from "./memoryTier";
 
 export interface MemoryFact {
   id: string;
+  tier: MemoryTier;
+  source: MemorySource;
   /** e.g. preference, allergy, goal, dislike, routine. */
   category: string;
   content: string;

@@ -27,11 +27,19 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Camera, ChefHat, Trash2, Pencil, Clock } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { Plus, Camera, ChefHat, Trash2, Pencil, Clock, AlertTriangle } from "lucide-react";
+import { format, formatDistanceToNow, differenceInCalendarDays } from "date-fns";
 import { fileToResizedDataUrl } from "@/lib/image";
 
 const CATEGORIES = ["produce", "dairy", "meat", "seafood", "grains", "pantry", "frozen", "beverages", "condiments"];
+
+function expiryStatus(expiresAt: string | null | undefined): "expired" | "soon" | "ok" | "none" {
+  if (!expiresAt) return "none";
+  const days = differenceInCalendarDays(new Date(expiresAt), new Date());
+  if (days < 0) return "expired";
+  if (days <= 3) return "soon";
+  return "ok";
+}
 
 interface ItemDraft {
   id?: string;
@@ -271,38 +279,84 @@ export default function FridgePage() {
         </div>
       ) : items.length === 0 ? (
         <Card className="border-card-border"><CardContent className="py-12 text-center text-muted-foreground">Empty fridge — tap "Add item" or "Scan ingredients".</CardContent></Card>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {items.map((it) => (
-            <Card key={it.id} className="border-card-border group" data-testid={`card-item-${it.id}`}>
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-serif text-lg leading-tight" data-testid={`text-item-name-${it.id}`}>{it.name}</span>
-                    <Badge variant="outline" className="capitalize text-[10px]">{it.category}</Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-0.5">{it.quantity}</div>
-                  {it.expiresAt ? (
-                    <div className="text-xs flex items-center gap-1 mt-2 text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      Use by {format(new Date(it.expiresAt), "MMM d")} · {formatDistanceToNow(new Date(it.expiresAt), { addSuffix: true })}
+      ) : (() => {
+          const expiringSoon = items.filter((it) => {
+            const s = expiryStatus(it.expiresAt);
+            return s === "soon" || s === "expired";
+          });
+          const grouped = new Map<string, typeof items>();
+          for (const cat of CATEGORIES) grouped.set(cat, []);
+          for (const it of items) {
+            if (!grouped.has(it.category)) grouped.set(it.category, []);
+            grouped.get(it.category)!.push(it);
+          }
+          const renderCard = (it: typeof items[number]) => {
+            const status = expiryStatus(it.expiresAt);
+            return (
+              <Card
+                key={it.id}
+                className={`border-card-border group ${status === "expired" ? "border-destructive/60 bg-destructive/5" : status === "soon" ? "border-primary/60 bg-primary/5" : ""}`}
+                data-testid={`card-item-${it.id}`}
+                data-expiry-status={status}
+              >
+                <CardContent className="p-4 flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-serif text-lg leading-tight" data-testid={`text-item-name-${it.id}`}>{it.name}</span>
+                      <Badge variant="outline" className="capitalize text-[10px]">{it.category}</Badge>
                     </div>
-                  ) : null}
-                  {it.notes ? <div className="text-xs text-muted-foreground mt-1">{it.notes}</div> : null}
-                </div>
-                <div className="flex flex-col gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(it)} data-testid={`button-edit-${it.id}`}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => remove(it.id)} disabled={del.isPending} data-testid={`button-delete-${it.id}`}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                    <div className="text-sm text-muted-foreground mt-0.5">{it.quantity}</div>
+                    {it.expiresAt ? (
+                      <div
+                        className={`text-xs flex items-center gap-1 mt-2 ${status === "expired" ? "text-destructive font-semibold" : status === "soon" ? "text-primary font-semibold" : "text-muted-foreground"}`}
+                        data-testid={`expiry-${it.id}`}
+                      >
+                        {status === "expired" || status === "soon" ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                        {status === "expired" ? "Expired " : "Use by "}
+                        {format(new Date(it.expiresAt), "MMM d")} · {formatDistanceToNow(new Date(it.expiresAt), { addSuffix: true })}
+                      </div>
+                    ) : null}
+                    {it.notes ? <div className="text-xs text-muted-foreground mt-1">{it.notes}</div> : null}
+                  </div>
+                  <div className="flex flex-col gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(it)} data-testid={`button-edit-${it.id}`}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => remove(it.id)} disabled={del.isPending} data-testid={`button-delete-${it.id}`}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          };
+          return (
+            <div className="space-y-6">
+              {expiringSoon.length > 0 ? (
+                <section data-testid="section-expiring-soon">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-primary" />
+                    <h2 className="font-serif text-xl">Use soon ({expiringSoon.length})</h2>
+                    <span className="text-xs text-muted-foreground">expiring within 3 days</span>
+                  </div>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {expiringSoon.map(renderCard)}
+                  </div>
+                </section>
+              ) : null}
+              {Array.from(grouped.entries())
+                .filter(([, list]) => list.length > 0)
+                .map(([cat, list]) => (
+                  <section key={cat} data-testid={`section-category-${cat}`}>
+                    <h2 className="font-serif text-xl capitalize mb-2">{cat} <span className="text-xs text-muted-foreground font-sans">({list.length})</span></h2>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {list.map(renderCard)}
+                    </div>
+                  </section>
+                ))}
+            </div>
+          );
+        })()}
     </div>
   );
 }

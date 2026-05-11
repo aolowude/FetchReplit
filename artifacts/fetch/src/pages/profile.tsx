@@ -19,7 +19,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, X } from "lucide-react";
+import { LogOut, X, Brain } from "lucide-react";
+import { MemoryPanel } from "@/components/memory-panel";
 
 const DIETS = ["omnivore", "vegetarian", "vegan", "pescatarian", "keto", "paleo", "gluten-free"];
 
@@ -176,6 +177,17 @@ export default function ProfilePage() {
               </Button>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-card-border">
+        <CardHeader>
+          <CardTitle className="font-serif text-xl flex items-center gap-2">
+            <Brain className="w-4 h-4 text-primary" /> What Fetch remembers about you
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MemoryPanel />
         </CardContent>
       </Card>
     </div>

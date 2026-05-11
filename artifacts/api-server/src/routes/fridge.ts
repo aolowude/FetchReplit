@@ -8,6 +8,7 @@ import {
   GenerateFridgeRecipesBody,
 } from "@workspace/api-zod";
 import { chatJson, AiError } from "../lib/ai";
+import { logMemoryEvent } from "../lib/memoryEvents";
 
 const router: IRouter = Router();
 
@@ -58,6 +59,7 @@ router.post("/fridge", requireAuth, async (req: Request, res: Response) => {
       expiresAt: expiresAt ? new Date(expiresAt) : null,
     })
     .returning();
+  void logMemoryEvent(user.id, "fridge.added", { id: row.id, name: row.name, category: row.category });
   res.status(201).json(toResponse(row));
 });
 
@@ -94,6 +96,7 @@ router.delete("/fridge/:id", requireAuth, async (req: Request, res: Response) =>
     res.status(404).json({ error: "not_found", message: "Fridge item not found." });
     return;
   }
+  void logMemoryEvent(user.id, "fridge.removed", { id: deleted[0].id });
   res.status(204).send();
 });
 
@@ -149,6 +152,7 @@ router.post("/fridge/from-image", requireAuth, async (req: Request, res: Respons
       })),
     )
     .returning();
+  void logMemoryEvent(user.id, "fridge.scanned", { count: inserted.length });
   res.json(inserted.map(toResponse));
 });
 
@@ -222,6 +226,11 @@ router.post("/fridge/recipes", requireAuth, async (req: Request, res: Response) 
     steps: Array.isArray(r.steps) ? r.steps.map(String) : [],
     tags: Array.isArray(r.tags) ? r.tags.map(String) : [],
   }));
+  void logMemoryEvent(user.id, "recipe.generated", {
+    cuisine: cuisine ?? null,
+    maxMinutes: maxMinutes ?? null,
+    count: recipes.length,
+  });
   res.json(recipes);
 });
 

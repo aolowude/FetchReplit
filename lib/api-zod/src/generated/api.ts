@@ -146,6 +146,12 @@ export const UpdateProfileResponse = zod.object({
  */
 export const ListMemoryFactsResponseItem = zod.object({
   id: zod.string().uuid(),
+  tier: zod.enum([
+    "stable_profile",
+    "inferred_preferences",
+    "contextual_state",
+  ]),
+  source: zod.enum(["user", "inferred"]),
   category: zod
     .string()
     .describe("e.g. preference, allergy, goal, dislike, routine."),
@@ -159,6 +165,9 @@ export const ListMemoryFactsResponse = zod.array(ListMemoryFactsResponseItem);
  */
 
 export const CreateMemoryFactBody = zod.object({
+  tier: zod
+    .enum(["stable_profile", "inferred_preferences", "contextual_state"])
+    .optional(),
   category: zod.string().min(1),
   content: zod.string().min(1),
 });
@@ -190,6 +199,9 @@ export const AnalyzeScanBody = zod.object({
 export const analyzeScanResponseHealthScoreMin = 0;
 export const analyzeScanResponseHealthScoreMax = 100;
 
+export const analyzeScanResponseEnvironmentalScoreMin = 0;
+export const analyzeScanResponseEnvironmentalScoreMax = 100;
+
 export const AnalyzeScanResponse = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
@@ -206,6 +218,28 @@ export const AnalyzeScanResponse = zod.object({
     .number()
     .min(analyzeScanResponseHealthScoreMin)
     .max(analyzeScanResponseHealthScoreMax),
+  environmentalScore: zod
+    .number()
+    .min(analyzeScanResponseEnvironmentalScoreMin)
+    .max(analyzeScanResponseEnvironmentalScoreMax)
+    .describe(
+      "Environmental impact score (0-100, higher is better\/lower-impact).",
+    ),
+  dietaryCompliance: zod.object({
+    vegetarian: zod.boolean(),
+    vegan: zod.boolean(),
+    glutenFree: zod.boolean(),
+    dairyFree: zod.boolean(),
+    pescatarian: zod.boolean(),
+    keto: zod.boolean(),
+  }),
+  allergens: zod.array(
+    zod.object({
+      allergen: zod.string(),
+      severity: zod.enum(["trace", "contains", "may_contain"]),
+      reason: zod.string(),
+    }),
+  ),
   ingredients: zod.array(
     zod.object({
       name: zod.string(),
@@ -221,6 +255,9 @@ export const AnalyzeScanResponse = zod.object({
  */
 export const listScansResponseHealthScoreMin = 0;
 export const listScansResponseHealthScoreMax = 100;
+
+export const listScansResponseEnvironmentalScoreMin = 0;
+export const listScansResponseEnvironmentalScoreMax = 100;
 
 export const ListScansResponseItem = zod.object({
   id: zod.string().uuid(),
@@ -238,6 +275,28 @@ export const ListScansResponseItem = zod.object({
     .number()
     .min(listScansResponseHealthScoreMin)
     .max(listScansResponseHealthScoreMax),
+  environmentalScore: zod
+    .number()
+    .min(listScansResponseEnvironmentalScoreMin)
+    .max(listScansResponseEnvironmentalScoreMax)
+    .describe(
+      "Environmental impact score (0-100, higher is better\/lower-impact).",
+    ),
+  dietaryCompliance: zod.object({
+    vegetarian: zod.boolean(),
+    vegan: zod.boolean(),
+    glutenFree: zod.boolean(),
+    dairyFree: zod.boolean(),
+    pescatarian: zod.boolean(),
+    keto: zod.boolean(),
+  }),
+  allergens: zod.array(
+    zod.object({
+      allergen: zod.string(),
+      severity: zod.enum(["trace", "contains", "may_contain"]),
+      reason: zod.string(),
+    }),
+  ),
   ingredients: zod.array(
     zod.object({
       name: zod.string(),
@@ -259,6 +318,9 @@ export const GetScanParams = zod.object({
 export const getScanResponseHealthScoreMin = 0;
 export const getScanResponseHealthScoreMax = 100;
 
+export const getScanResponseEnvironmentalScoreMin = 0;
+export const getScanResponseEnvironmentalScoreMax = 100;
+
 export const GetScanResponse = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
@@ -275,6 +337,28 @@ export const GetScanResponse = zod.object({
     .number()
     .min(getScanResponseHealthScoreMin)
     .max(getScanResponseHealthScoreMax),
+  environmentalScore: zod
+    .number()
+    .min(getScanResponseEnvironmentalScoreMin)
+    .max(getScanResponseEnvironmentalScoreMax)
+    .describe(
+      "Environmental impact score (0-100, higher is better\/lower-impact).",
+    ),
+  dietaryCompliance: zod.object({
+    vegetarian: zod.boolean(),
+    vegan: zod.boolean(),
+    glutenFree: zod.boolean(),
+    dairyFree: zod.boolean(),
+    pescatarian: zod.boolean(),
+    keto: zod.boolean(),
+  }),
+  allergens: zod.array(
+    zod.object({
+      allergen: zod.string(),
+      severity: zod.enum(["trace", "contains", "may_contain"]),
+      reason: zod.string(),
+    }),
+  ),
   ingredients: zod.array(
     zod.object({
       name: zod.string(),
@@ -430,6 +514,9 @@ export const GenerateFridgeRecipesResponse = zod.array(
 export const getHomeSummaryResponseRecentScansItemHealthScoreMin = 0;
 export const getHomeSummaryResponseRecentScansItemHealthScoreMax = 100;
 
+export const getHomeSummaryResponseRecentScansItemEnvironmentalScoreMin = 0;
+export const getHomeSummaryResponseRecentScansItemEnvironmentalScoreMax = 100;
+
 export const GetHomeSummaryResponse = zod.object({
   todayCalories: zod.number(),
   todayProtein: zod.number(),
@@ -453,6 +540,28 @@ export const GetHomeSummaryResponse = zod.object({
         .number()
         .min(getHomeSummaryResponseRecentScansItemHealthScoreMin)
         .max(getHomeSummaryResponseRecentScansItemHealthScoreMax),
+      environmentalScore: zod
+        .number()
+        .min(getHomeSummaryResponseRecentScansItemEnvironmentalScoreMin)
+        .max(getHomeSummaryResponseRecentScansItemEnvironmentalScoreMax)
+        .describe(
+          "Environmental impact score (0-100, higher is better\/lower-impact).",
+        ),
+      dietaryCompliance: zod.object({
+        vegetarian: zod.boolean(),
+        vegan: zod.boolean(),
+        glutenFree: zod.boolean(),
+        dairyFree: zod.boolean(),
+        pescatarian: zod.boolean(),
+        keto: zod.boolean(),
+      }),
+      allergens: zod.array(
+        zod.object({
+          allergen: zod.string(),
+          severity: zod.enum(["trace", "contains", "may_contain"]),
+          reason: zod.string(),
+        }),
+      ),
       ingredients: zod.array(
         zod.object({
           name: zod.string(),

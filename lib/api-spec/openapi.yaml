@@ -723,11 +723,19 @@ components:
           type: array
           items: { type: string }
 
+    MemoryTier:
+      type: string
+      enum: [stable_profile, inferred_preferences, contextual_state]
+    MemorySource:
+      type: string
+      enum: [user, inferred]
     MemoryFact:
       type: object
-      required: [id, category, content, createdAt]
+      required: [id, tier, source, category, content, createdAt]
       properties:
         id: { type: string, format: uuid }
+        tier: { $ref: '#/components/schemas/MemoryTier' }
+        source: { $ref: '#/components/schemas/MemorySource' }
         category:
           type: string
           description: e.g. preference, allergy, goal, dislike, routine.
@@ -737,6 +745,7 @@ components:
       type: object
       required: [category, content]
       properties:
+        tier: { $ref: '#/components/schemas/MemoryTier' }
         category:
           type: string
           minLength: 1
@@ -761,6 +770,25 @@ components:
       properties:
         name: { type: string }
         amount: { type: string }
+    DietaryCompliance:
+      type: object
+      required: [vegetarian, vegan, glutenFree, dairyFree, pescatarian, keto]
+      properties:
+        vegetarian: { type: boolean }
+        vegan: { type: boolean }
+        glutenFree: { type: boolean }
+        dairyFree: { type: boolean }
+        pescatarian: { type: boolean }
+        keto: { type: boolean }
+    AllergenWarning:
+      type: object
+      required: [allergen, severity, reason]
+      properties:
+        allergen: { type: string }
+        severity:
+          type: string
+          enum: [trace, contains, may_contain]
+        reason: { type: string }
     Scan:
       type: object
       required:
@@ -776,6 +804,9 @@ components:
         - fiber
         - sugar
         - healthScore
+        - environmentalScore
+        - dietaryCompliance
+        - allergens
         - ingredients
         - tags
         - createdAt
@@ -795,6 +826,17 @@ components:
           type: integer
           minimum: 0
           maximum: 100
+        environmentalScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Environmental impact score (0-100, higher is better/lower-impact).
+        dietaryCompliance:
+          $ref: '#/components/schemas/DietaryCompliance'
+        allergens:
+          type: array
+          items:
+            $ref: '#/components/schemas/AllergenWarning'
         ingredients:
           type: array
           items:
