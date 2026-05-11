@@ -49,6 +49,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/uploads/finalize:
+    post:
+      tags: [Storage]
+      operationId: finalizeUpload
+      summary: Finalize an upload by binding ownership ACL to the uploaded object
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalizeUploadInput'
+      responses:
+        '200':
+          description: ACL bound successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinalizeUploadResult'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /home/recipes:
     get:
       tags: [Home]
@@ -844,6 +874,16 @@ components:
         objectPath: { type: string }
         metadata:
           $ref: '#/components/schemas/UploadUrlRequest'
+    FinalizeUploadInput:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string, minLength: 1 }
+    FinalizeUploadResult:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string }
     HomeRecipeIdea:
       type: object
       required: [id, title, reason, usedIngredients, missingIngredients, minutes]

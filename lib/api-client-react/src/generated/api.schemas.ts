@@ -167,6 +167,15 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export interface FinalizeUploadInput {
+  /** @minLength 1 */
+  objectPath: string;
+}
+
+export interface FinalizeUploadResult {
+  objectPath: string;
+}
+
 export interface HomeRecipeIdea {
   id: string;
   title: string;

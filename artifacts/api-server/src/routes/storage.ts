@@ -3,6 +3,8 @@ import { Readable } from "stream";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
+  FinalizeUploadBody,
+  FinalizeUploadResponse,
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
@@ -41,16 +43,8 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
-    // Bind the freshly-uploaded object to the requesting user so private ACL
-    // checks can authorise subsequent reads.
-    try {
-      await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
-        owner: req.user!.id,
-        visibility: "private",
-      });
-    } catch (aclErr) {
-      req.log.warn({ err: aclErr, objectPath }, "Could not set ACL policy for new object");
-    }
+    // The object does not exist yet — ACL is bound after the client PUTs the
+    // file via POST /storage/uploads/finalize.
 
     res.json(
       RequestUploadUrlResponse.parse({
@@ -62,6 +56,36 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   } catch (error) {
     req.log.error({ err: error }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
+/**
+ * POST /storage/uploads/finalize
+ *
+ * Called after the client successfully PUTs to the presigned URL. Binds
+ * the requesting user as the owner of the object via private ACL so that
+ * subsequent reads can be authorised.
+ */
+router.post("/storage/uploads/finalize", requireAuth, async (req: Request, res: Response) => {
+  const parsed = FinalizeUploadBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "bad_request", message: "objectPath required" });
+    return;
+  }
+  const { objectPath } = parsed.data;
+  try {
+    const normalized = await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
+      owner: req.user!.id,
+      visibility: "private",
+    });
+    res.json(FinalizeUploadResponse.parse({ objectPath: normalized }));
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "not_found", message: "Object not found." });
+      return;
+    }
+    req.log.error({ err: error }, "Error finalizing upload");
+    res.status(500).json({ error: "internal", message: "Failed to finalize upload." });
   }
 });
 

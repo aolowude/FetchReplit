@@ -30,6 +30,18 @@ export const RequestUploadUrlResponse = zod.object({
 });
 
 /**
+ * @summary Finalize an upload by binding ownership ACL to the uploaded object
+ */
+
+export const FinalizeUploadBody = zod.object({
+  objectPath: zod.string().min(1),
+});
+
+export const FinalizeUploadResponse = zod.object({
+  objectPath: zod.string(),
+});
+
+/**
  * @summary Quick recipe ideas based on what's in the fridge
  */
 export const getHomeRecipesResponseMinutesMin = 0;

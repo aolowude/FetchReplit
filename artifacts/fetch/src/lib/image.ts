@@ -76,5 +76,16 @@ export async function uploadImageToObjectStorage(
   if (!putRes.ok) {
     throw new Error(`Upload failed (${putRes.status})`);
   }
-  return objectPath;
+  // Bind ownership ACL now that the object exists in storage.
+  const finalizeRes = await fetch(`${API_BASE}/storage/uploads/finalize`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ objectPath }),
+  });
+  if (!finalizeRes.ok) {
+    throw new Error(`Finalize failed (${finalizeRes.status})`);
+  }
+  const { objectPath: finalPath } = (await finalizeRes.json()) as { objectPath: string };
+  return finalPath || objectPath;
 }

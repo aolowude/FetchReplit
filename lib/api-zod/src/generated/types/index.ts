@@ -17,6 +17,8 @@ export * from "./beginBrowserLoginParams";
 export * from "./cookingSkill";
 export * from "./dietaryCompliance";
 export * from "./errorEnvelope";
+export * from "./finalizeUploadInput";
+export * from "./finalizeUploadResult";
 export * from "./fridgeItem";
 export * from "./fridgeItemInput";
 export * from "./fridgeItemUpdate";
