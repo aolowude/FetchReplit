@@ -1,0 +1,281 @@
+I'll update the PRD to remove Vercel-specific references and add the Curated Suggestions section with memory/learning capabilities.I have what I need. Let me update the PRD directly.Here's the full updated PRD reflecting the Replit move and the new Curated Suggestions / Memory sections:
+
+---
+
+# Fetch App — Product Requirements Document (PRD) v2
+
+## 1. Executive Summary
+
+**Product Name:** Fetch
+**Platform:** Web Application (Progressive Web App)
+**Technology Stack:** Next.js, TypeScript, OpenRouter API, AI/LLM Integration
+**Hosting & Infrastructure:** Replit (deployment, auth, database)
+**Design Language:** Modern, sleek UI with glassmorphism aesthetic
+
+Fetch is an AI-powered food discovery and nutrition management web application that empowers users to make informed dietary decisions through intelligent food scanning, personalised recommendations, and comprehensive nutrition analysis. Built as a Progressive Web App using Next.js and TypeScript, Fetch combines advanced AI capabilities with a continuously learning user memory system to transform how people discover, analyse, and manage their food choices across all devices.
+
+## 2. Product Vision & Goals
+
+### Vision Statement
+To create an intelligent food companion that learns and adapts to each user over time, democratising nutrition knowledge and enabling healthier, more sustainable eating habits through AI-powered insights.
+
+### Primary Goals
+- Provide instant, accurate nutritional analysis through AI-powered food scanning
+- Deliver personalised recommendations that improve with every interaction
+- Enable smart inventory management and recipe generation from available ingredients
+- Build a persistent user memory that informs context-aware suggestions
+- Create a seamless, visually appealing experience with modern design principles
+
+### Success Metrics
+- User engagement: DAU, session duration
+- Feature adoption: Scan frequency, recipe generation usage
+- Personalisation quality: Suggestion acceptance rate, repeat usage
+- PWA metrics: Install rate, offline usage, return visit frequency
+
+## 3. Target Audience
+
+### Primary Users
+- Health-conscious individuals seeking nutritional transparency
+- People with dietary restrictions (vegan, gluten-free, keto, lactose-intolerant, etc.)
+- Home cooks looking for ingredient-based recipe suggestions
+- Frequent travellers wanting local food guidance abroad
+- Environmentally conscious consumers wanting sustainable food choices
+
+### Secondary Users
+- Fitness enthusiasts tracking macronutrients
+- Parents managing family dietary needs
+- Individuals managing health conditions through diet
+
+## 4. Core Features & Functionality
+
+### 4.1 Home Page
+**Purpose:** Central hub for personalised food discovery and curated recommendations
+
+**Key Features:**
+- Suggested Ingredients carousel (curated by user memory)
+- Recipe recommendations (filtered by dietary profile and recent activity)
+- Trending and seasonal foods
+- Quick actions: Scan, MyFridge, Profile
+- Daily nutrition insights summary
+- Context-aware banner (e.g. "Travelling to Nairobi? Tap to see local picks")
+
+### 4.2 Scan Page
+**Purpose:** AI-powered food analysis through image recognition and label scanning
+
+**Key Features:**
+- Camera integration and image upload
+- AI analysis engine returning:
+  - Nutritional Information (calories, macros, micros, vitamins)
+  - Dietary Compliance (vegan, vegetarian, keto, gluten-free, lactose-free, paleo, low-sodium)
+  - Allergen Detection (full list, cross-contamination warnings, severity)
+  - Health Score (0-100 with ingredient quality and processing level)
+  - Environmental Impact (carbon footprint, sustainability score, packaging, origin)
+- Save to history for cloud sync
+- Feeds the memory system with what the user actually scans
+
+### 4.3 MyFridge Page
+**Purpose:** Smart inventory management and recipe generation
+
+**Key Features:**
+- Manual or scan-based item addition
+- Expiry date monitoring with notifications
+- Category organisation (pantry, fridge, freezer)
+- AI recipe generation from available ingredients
+- Shopping list auto-generation
+- "Use Soon" alerts for expiring items
+
+### 4.4 Profile Page
+**Purpose:** User personalisation and preference management
+
+**Key Features:**
+- Dietary restrictions and allergy tracking
+- Health goals (weight, fitness, medical considerations)
+- Favourite cuisines, flavours, disliked ingredients
+- Cooking skill level and equipment
+- Memory review and editing (see §5.3)
+- Account, privacy, and notification settings
+
+## 5. Curated Suggestions & Adaptive Learning
+
+### 5.1 Concept
+Curated Suggestions is the layer that makes Fetch feel like it actually knows you. Every interaction (scans, saves, dismisses, recipes cooked, ingredients added, location changes) feeds a persistent user memory. The agent uses this memory to refine future recommendations, similar to how a human nutritionist builds intuition about a regular client.
+
+This is a lightweight reinforcement loop: signals in → memory update → better suggestions out → user reacts → signals in.
+
+### 5.2 How It Works
+
+**Signal collection.** Every meaningful user action emits an event (e.g. `scan.completed`, `recipe.saved`, `ingredient.dismissed`, `location.changed`). Events are written to an event log with a timestamp and structured payload.
+
+**Memory synthesis.** A scheduled job (nightly, plus on-demand for high-signal events like a new location) runs an LLM pass over recent events and the existing memory. The LLM produces a structured update: new facts to add, stale facts to remove, confidence adjustments. This mirrors the pattern used in Claude Projects memory.
+
+**Suggestion generation.** When the user lands on Home or hits MyFridge, the recommendation prompt includes the relevant slice of memory plus current context (time, location, weather, what's in the fridge). The LLM produces ranked suggestions with reasoning the user can optionally inspect ("Why this?").
+
+**Context-aware example.** User books a trip to Nairobi (or simply changes their location). The agent surfaces Kenyan staples that fit their dietary profile (e.g. ugali, sukuma wiki, nyama choma alternatives if vegetarian), nearby supermarket equivalents for items in their MyFridge, and warns about common allergens in local dishes.
+
+### 5.3 User Control (Important)
+- Memory is **visible and editable** on the Profile page
+- Users can delete individual memory items or clear all memory
+- Sensitive categories (medical conditions, religion-linked diet) require explicit opt-in
+- Memory is never sold or shared with third parties
+
+### 5.4 Feedback Mechanisms
+- Thumbs up / down on every suggestion card
+- "Not interested" dismissal (decays category weight)
+- "More like this" boost
+- Explicit "Why did you suggest this?" reveal
+
+## 6. Memory Schema — What the Agent Tracks
+
+Memory is organised into four tiers based on stability and sensitivity.
+
+### 6.1 Stable Profile (slow-changing, explicit)
+- Dietary pattern (vegan, vegetarian, omnivore, pescatarian, halal, kosher)
+- Allergies and intolerances (lactose, gluten, nuts, shellfish, etc.) with severity
+- Health goals (weight loss, muscle gain, maintenance, condition management)
+- Disliked ingredients
+- Cooking skill (beginner, intermediate, advanced) and available equipment
+- Household size and who else is being cooked for
+- Budget range per meal or weekly grocery spend
+
+### 6.2 Inferred Preferences (learned, updatable)
+- Cuisine affinities (e.g. "leans Mediterranean and East Asian")
+- Flavour profile (spice tolerance, sweet vs savoury bias)
+- Macro tendencies (typically high-protein, low-carb evenings, etc.)
+- Brand preferences (e.g. consistently picks Walkers over Pringles)
+- Time-of-day patterns (quick breakfast, elaborate dinner on weekends)
+- Recipe complexity tolerance (under 30 min weeknights, longer on Sundays)
+- Repeat ingredients in MyFridge (signals staples)
+
+### 6.3 Contextual State (rolling, time-bound)
+- Current location (city level, not precise GPS unless user opts in)
+- Travel state (e.g. "in Nairobi, Kenya, 12-19 May")
+- Recent scans (last 30 days)
+- Current MyFridge contents and expiry windows
+- Season and local climate
+- Recent ailments if user logged them (e.g. "hungover", "cold", "pregnant" — all opt-in and time-boxed)
+
+### 6.4 Sensitive — Explicit Opt-In Only
+- Medical conditions (diabetes, IBS, coeliac, etc.)
+- Pregnancy or breastfeeding status
+- Religious dietary observance
+- Mental health context if voluntarily shared
+
+### 6.5 What We Explicitly Do Not Store
+- Precise GPS coordinates or location history beyond city-level context
+- Biometric data unless user pastes it in themselves
+- Payment information beyond what Replit/Stripe handles
+- Conversations or scans the user has deleted
+- Identity inferences (ethnicity, sexuality) unless user volunteers them for relevant dietary reasons
+
+## 7. Data Collection from the User
+
+Three buckets: what we **ask** for, what we **infer**, and what we **observe**.
+
+### 7.1 Data We Ask For (Onboarding & Profile)
+- Name and email (for auth)
+- Country of residence
+- Dietary pattern and restrictions
+- Allergies and severity
+- Health goals (optional)
+- Household size (optional)
+- Budget tier (optional)
+
+### 7.2 Data We Infer (From Behaviour)
+- Cuisine and flavour preferences (from saved recipes and scans)
+- Brand affinities (from repeat scans)
+- Cooking patterns (from MyFridge activity and recipe completion)
+- Macro and calorie patterns (from logged meals)
+- Suggestion fit score (from accept/dismiss ratios)
+
+### 7.3 Data We Observe With Consent
+- Approximate location (city level, via IP or user-set)
+- Travel context (user-declared trip or detected location change)
+- Time of day and day of week of usage
+- Device type (for PWA optimisation)
+
+### 7.4 Retention & Deletion
+- Event log: 90 days rolling
+- Synthesised memory: persistent until user deletes
+- Scan history: persistent, user-controlled
+- One-tap "Export my data" and "Delete my account" on Profile
+
+## 8. Technical Architecture
+
+### 8.1 Frontend
+- Next.js 14+ with App Router
+- TypeScript strict mode
+- Tailwind CSS with glassmorphism component library
+- State: React Context or Zustand
+- PWA: service worker, offline cache, manifest
+
+### 8.2 Backend & Infrastructure (Replit)
+- Hosted on Replit with Next.js API routes
+- **Auth:** Replit Auth (OIDC) for user identity
+- **Database:** Replit DB for key-value memory cache, Postgres (via Replit) for relational data
+- **Storage:** Replit Object Storage for scan images
+- **Scheduled jobs:** Replit Scheduled Deployments for nightly memory synthesis
+
+### 8.3 AI Layer
+- OpenRouter API as the LLM gateway (model-agnostic)
+- Vision-capable model for scan analysis (e.g. GPT-4 Vision, Claude Sonnet)
+- Lighter model for memory synthesis and ranking
+- Structured outputs (JSON schema) for all AI responses
+- Prompt versioning stored in the repo
+
+### 8.4 Nutritional Data
+- Open Food Facts as primary reference
+- USDA FoodData Central as secondary
+- Local cache of frequently scanned items
+
+## 9. User Experience & Design
+
+- Glassmorphism: frosted surfaces, subtle depth, layered transparency
+- Sentence case throughout
+- Mobile-first responsive, desktop-friendly
+- WCAG 2.1 AA accessibility
+- Smooth micro-interactions on suggestion cards (accept, dismiss, expand)
+- "Why this?" reveal on every suggestion to build trust in the memory system
+
+## 10. Security & Privacy
+
+- Replit Auth handles credentials; no passwords stored by Fetch
+- All memory encrypted at rest
+- Sensitive memory tier requires re-confirmation every 90 days
+- GDPR-compliant: export, rectify, delete
+- Clear in-app privacy view showing exactly what the agent knows
+
+## 11. Performance Targets
+
+- LCP < 2.5s, FID < 100ms, CLS < 0.1
+- Scan results < 5s end-to-end
+- Suggestion render < 1s using cached memory slice
+- Offline: cached suggestions and MyFridge view available
+
+## 12. Roadmap
+
+**Phase 1 (MVP):** Scan, MyFridge, Profile, basic Home with static suggestions, Replit Auth, scan history.
+
+**Phase 2 (Curated Suggestions v1):** Event logging, nightly memory synthesis, personalised Home, location-aware context, feedback signals.
+
+**Phase 3 (Adaptive Loop v2):** Multi-trip travel mode, household sharing, integration with grocery store APIs (Sainsbury's, Morrisons), shopping list export.
+
+**Phase 4:** Community recipes, meal-prep planner, wearable integrations.
+
+## 13. KPIs
+
+- Suggestion accept rate (target > 35% by Phase 2)
+- Memory accuracy (user-reported, via Profile review)
+- 7-day and 30-day retention
+- Scans per active user per week
+- Recipe completion rate from MyFridge suggestions
+
+## 14. Risks & Mitigation
+
+- **Over-personalisation / filter bubble** — surface "try something new" cards weekly
+- **Memory drift / staleness** — confidence decay on unused signals, user review prompts every 60 days
+- **AI cost** — cache aggressively, use cheaper models for memory synthesis
+- **Privacy concerns** — radical transparency in the memory UI; never hide what's stored
+
+---
+
+Want me to drop this into a Word doc, or expand any of §5-7 (the memory and data sections) into more implementation detail like a Postgres schema sketch or event taxonomy?
