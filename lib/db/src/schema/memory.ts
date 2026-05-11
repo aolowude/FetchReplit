@@ -8,24 +8,39 @@ export type MemoryTier = (typeof MEMORY_TIERS)[number];
 export const MEMORY_SOURCES = ["user", "inferred"] as const;
 export type MemorySource = (typeof MEMORY_SOURCES)[number];
 
-export const memoryFactsTable = pgTable(
-  "memory_facts",
-  {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    userId: varchar("user_id")
-      .notNull()
-      .references(() => usersTable.id, { onDelete: "cascade" }),
-    tier: text("tier").notNull().default("stable_profile"),
-    source: text("source").notNull().default("user"),
-    category: text("category").notNull(),
-    content: text("content").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [index("idx_memory_facts_user").on(table.userId, table.createdAt)],
-);
+export interface MemoryItem {
+  id: string;
+  tier: MemoryTier;
+  source: MemorySource;
+  category: string;
+  content: string;
+  createdAt: string;
+}
 
-export type MemoryFactRow = typeof memoryFactsTable.$inferSelect;
-export type InsertMemoryFact = typeof memoryFactsTable.$inferInsert;
+export interface UserMemoryDoc {
+  stableProfile: MemoryItem[];
+  inferredPreferences: MemoryItem[];
+  contextualState: MemoryItem[];
+}
+
+export const EMPTY_USER_MEMORY: UserMemoryDoc = {
+  stableProfile: [],
+  inferredPreferences: [],
+  contextualState: [],
+};
+
+export const userMemoryTable = pgTable("user_memory", {
+  userId: varchar("user_id")
+    .primaryKey()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  data: jsonb("data").$type<UserMemoryDoc>().notNull().default(sql`'{"stableProfile":[],"inferredPreferences":[],"contextualState":[]}'::jsonb`),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type UserMemoryRow = typeof userMemoryTable.$inferSelect;
 
 export const memoryEventsTable = pgTable(
   "memory_events",

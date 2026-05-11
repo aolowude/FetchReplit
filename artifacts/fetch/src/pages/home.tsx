@@ -4,15 +4,18 @@ import {
   getGetHomeSummaryQueryKey,
   useGetHomeSuggestions,
   getGetHomeSuggestionsQueryKey,
+  useGetHomeRecipes,
+  getGetHomeRecipesQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Camera, Sparkles, Refrigerator, Clock, ChevronRight } from "lucide-react";
+import { Camera, Sparkles, Refrigerator, Clock, ChevronRight, ChefHat } from "lucide-react";
 import { HealthRing } from "@/components/health-ring";
 import { formatDistanceToNow } from "date-fns";
+import { objectPathToUrl } from "@/lib/image";
 
 function MacroBar({ label, value, max, color }: { label: string; value: number; max?: number; color: string }) {
   const pct = max && max > 0 ? Math.min(100, (value / max) * 100) : 0;
@@ -35,8 +38,11 @@ export default function HomePage() {
   const { user } = useAuth();
   const summaryQ = useGetHomeSummary({ query: { queryKey: getGetHomeSummaryQueryKey() } });
   const sugQ = useGetHomeSuggestions({ query: { queryKey: getGetHomeSuggestionsQueryKey() } });
+  const recipeQ = useGetHomeRecipes({ query: { queryKey: getGetHomeRecipesQueryKey() } });
   const summary = summaryQ.data;
   const suggestions = sugQ.data ?? [];
+  const recipes = recipeQ.data ?? [];
+  const expiring = summary?.expiringItems ?? [];
   const greetingName = user?.firstName || (user?.email ? user.email.split("@")[0] : "friend");
 
   return (
@@ -107,6 +113,103 @@ export default function HomePage() {
         </CardContent>
       </Card>
 
+      <section data-testid="section-ingredient-carousel">
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="font-serif text-2xl tracking-tight flex items-center gap-2">
+            <Refrigerator className="w-5 h-5 text-primary" /> Use these soon
+          </h2>
+          <Link href="/fridge" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center">
+            MyFridge <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+        {summaryQ.isLoading ? (
+          <div className="flex gap-3 overflow-hidden">
+            {[0,1,2,3].map((i) => <Skeleton key={i} className="h-28 w-44 rounded-2xl shrink-0" />)}
+          </div>
+        ) : expiring.length === 0 ? (
+          <Card className="border-card-border">
+            <CardContent className="py-6 text-sm text-muted-foreground">
+              Nothing in your fridge needs urgent attention. <Link href="/fridge" className="underline">Add ingredients</Link> to see ideas tailored to what you have.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory" data-testid="ingredient-carousel">
+            {expiring.map((it) => {
+              const days = it.expiresAt
+                ? Math.max(0, Math.round((new Date(it.expiresAt).getTime() - Date.now()) / 86400000))
+                : null;
+              const urgency = days != null && days <= 1 ? "border-destructive/40 bg-destructive/5" : days != null && days <= 3 ? "border-amber-500/40 bg-amber-500/5" : "border-card-border bg-card";
+              return (
+                <div
+                  key={it.id}
+                  className={`shrink-0 w-44 snap-start rounded-2xl border p-4 flex flex-col gap-1.5 ${urgency}`}
+                  data-testid={`ingredient-card-${it.id}`}
+                >
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground capitalize">{it.category}</div>
+                  <div className="font-serif text-lg leading-tight truncate">{it.name}</div>
+                  <div className="text-xs text-muted-foreground">{it.quantity}</div>
+                  {it.expiresAt ? (
+                    <Badge variant="outline" className="self-start mt-auto text-[10px]">
+                      <Clock className="w-3 h-3 mr-1" />
+                      {formatDistanceToNow(new Date(it.expiresAt), { addSuffix: true })}
+                    </Badge>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section data-testid="section-recipe-recommendations">
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="font-serif text-2xl tracking-tight flex items-center gap-2">
+            <ChefHat className="w-5 h-5 text-primary" /> Recipes for what you have
+          </h2>
+          {recipeQ.isFetching ? <span className="text-xs text-muted-foreground">cooking up ideas…</span> : null}
+        </div>
+        {recipeQ.isLoading ? (
+          <div className="grid md:grid-cols-3 gap-3">
+            {[0,1,2].map((i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
+          </div>
+        ) : recipeQ.isError ? (
+          <Card className="border-card-border"><CardContent className="py-6 text-sm text-muted-foreground">Couldn't reach the chef right now. Try again in a moment.</CardContent></Card>
+        ) : recipes.length === 0 ? (
+          <Card className="border-card-border">
+            <CardContent className="py-6 text-sm text-muted-foreground">
+              Add a few items to <Link href="/fridge" className="underline">MyFridge</Link> and we'll cook up personalised recipe ideas.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-3">
+            {recipes.map((r) => (
+              <Card key={r.id} className="border-card-border hover:shadow-md transition-shadow" data-testid={`recipe-card-${r.id}`}>
+                <CardContent className="p-4 flex flex-col h-full">
+                  <div className="font-serif text-lg leading-snug">{r.title}</div>
+                  <p className="text-xs text-muted-foreground mt-1 flex-1">{r.reason}</p>
+                  <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>{r.minutes} min</span>
+                    <span>{r.usedIngredients.length} from fridge</span>
+                  </div>
+                  {r.usedIngredients.length ? (
+                    <div className="mt-2 flex gap-1 flex-wrap">
+                      {r.usedIngredients.slice(0, 4).map((ing) => (
+                        <Badge key={ing} variant="secondary" className="text-[10px]">{ing}</Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  {r.missingIngredients.length ? (
+                    <div className="mt-1.5 text-[11px] text-muted-foreground">
+                      Plus: {r.missingIngredients.slice(0, 3).join(", ")}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-serif text-2xl tracking-tight flex items-center gap-2">
@@ -123,7 +226,7 @@ export default function HomePage() {
         ) : suggestions.length === 0 ? (
           <Card className="border-card-border">
             <CardContent className="py-6 text-sm text-muted-foreground">
-              Add a few items to <Link href="/fridge" className="underline">MyFridge</Link> or save preferences in <Link href="/profile" className="underline">Profile</Link> for smarter suggestions.
+              Save preferences in <Link href="/profile" className="underline">Profile</Link> for smarter suggestions.
             </CardContent>
           </Card>
         ) : (
@@ -151,7 +254,7 @@ export default function HomePage() {
         )}
       </section>
 
-      <section className="grid md:grid-cols-2 gap-5">
+      <section>
         <Card className="border-card-border">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="font-serif text-xl">Recent scans</CardTitle>
@@ -166,52 +269,21 @@ export default function HomePage() {
               <p className="text-sm text-muted-foreground py-3">No scans yet. <Link href="/scan" className="underline">Try one now.</Link></p>
             ) : (
               <ul className="space-y-2">
-                {summary!.recentScans.map((s) => (
-                  <li key={s.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors" data-testid={`row-scan-${s.id}`}>
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0">
-                      {s.imageDataUrl ? <img src={s.imageDataUrl} alt={s.foodName} className="w-full h-full object-cover" /> : null}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate" data-testid={`text-scan-name-${s.id}`}>{s.foodName}</div>
-                      <div className="text-xs text-muted-foreground">{s.calories} kcal · {formatDistanceToNow(new Date(s.createdAt), { addSuffix: true })}</div>
-                    </div>
-                    <HealthRing score={s.healthScore} size={42} strokeWidth={4} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-card-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="font-serif text-xl flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" /> Use it soon
-            </CardTitle>
-            <Link href="/fridge" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center">
-              MyFridge <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {summaryQ.isLoading ? (
-              <div className="space-y-2">{[0,1,2].map(i => <Skeleton key={i} className="h-12 rounded-xl" />)}</div>
-            ) : (summary?.expiringItems?.length ?? 0) === 0 ? (
-              <p className="text-sm text-muted-foreground py-3">Nothing expiring this week.</p>
-            ) : (
-              <ul className="space-y-2">
-                {summary!.expiringItems.map((it) => (
-                  <li key={it.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-muted/50" data-testid={`row-expiring-${it.id}`}>
-                    <div>
-                      <div className="font-medium">{it.name}</div>
-                      <div className="text-xs text-muted-foreground capitalize">{it.category} · {it.quantity}</div>
-                    </div>
-                    {it.expiresAt ? (
-                      <Badge variant="outline" className="text-xs">
-                        {formatDistanceToNow(new Date(it.expiresAt), { addSuffix: true })}
-                      </Badge>
-                    ) : null}
-                  </li>
-                ))}
+                {summary!.recentScans.map((s) => {
+                  const url = objectPathToUrl(s.imageObjectPath);
+                  return (
+                    <li key={s.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors" data-testid={`row-scan-${s.id}`}>
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0">
+                        {url ? <img src={url} alt={s.foodName} className="w-full h-full object-cover" loading="lazy" /> : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate" data-testid={`text-scan-name-${s.id}`}>{s.foodName}</div>
+                        <div className="text-xs text-muted-foreground">{s.calories} kcal · {formatDistanceToNow(new Date(s.createdAt), { addSuffix: true })}</div>
+                      </div>
+                      <HealthRing score={s.healthScore} size={42} strokeWidth={4} />
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>

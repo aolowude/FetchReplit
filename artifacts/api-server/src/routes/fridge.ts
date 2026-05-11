@@ -9,8 +9,11 @@ import {
 } from "@workspace/api-zod";
 import { chatJson, AiError } from "../lib/ai";
 import { logMemoryEvent } from "../lib/memoryEvents";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { ObjectPermission } from "../lib/objectAcl";
 
 const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
 
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.isAuthenticated()) {
@@ -113,9 +116,34 @@ router.post("/fridge/from-image", requireAuth, async (req: Request, res: Respons
     res.status(400).json({ error: "bad_request", message: parsed.error.message });
     return;
   }
-  const { imageDataUrl } = parsed.data;
-  if (!imageDataUrl.startsWith("data:image/")) {
-    res.status(400).json({ error: "bad_request", message: "imageDataUrl must be a data URL." });
+  const { imageObjectPath } = parsed.data;
+  if (!imageObjectPath.startsWith("/objects/")) {
+    res.status(400).json({ error: "bad_request", message: "imageObjectPath must be an object storage path." });
+    return;
+  }
+
+  let imageDataUrl: string;
+  try {
+    const file = await objectStorageService.getObjectEntityFile(imageObjectPath);
+    const canAccess = await objectStorageService.canAccessObjectEntity({
+      userId: user.id,
+      objectFile: file,
+      requestedPermission: ObjectPermission.READ,
+    });
+    if (!canAccess) {
+      res.status(403).json({ error: "forbidden", message: "You do not own this object." });
+      return;
+    }
+    const [meta] = await file.getMetadata();
+    const contentType = String(meta.contentType ?? "image/jpeg");
+    const [buffer] = await file.download();
+    imageDataUrl = `data:${contentType};base64,${buffer.toString("base64")}`;
+  } catch (err) {
+    if (err instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "not_found", message: "Uploaded image not found." });
+      return;
+    }
+    res.status(500).json({ error: "storage_error", message: "Could not read uploaded image." });
     return;
   }
 

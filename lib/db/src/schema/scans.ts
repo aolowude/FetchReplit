@@ -39,7 +39,7 @@ export const scansTable = pgTable(
     userId: varchar("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
-    imageDataUrl: text("image_data_url").notNull(),
+    imageObjectPath: text("image_object_path").notNull().default(""),
     foodName: text("food_name").notNull(),
     description: text("description").notNull().default(""),
     calories: integer("calories").notNull().default(0),

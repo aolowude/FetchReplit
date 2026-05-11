@@ -29,7 +29,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Camera, ChefHat, Trash2, Pencil, Clock, AlertTriangle } from "lucide-react";
 import { format, formatDistanceToNow, differenceInCalendarDays } from "date-fns";
-import { fileToResizedDataUrl } from "@/lib/image";
+import { fileToResizedBlob, uploadImageToObjectStorage } from "@/lib/image";
 
 const CATEGORIES = ["produce", "dairy", "meat", "seafood", "grains", "pantry", "frozen", "beverages", "condiments"];
 
@@ -124,8 +124,9 @@ export default function FridgePage() {
 
   async function onScanIngredients(file: File) {
     try {
-      const dataUrl = await fileToResizedDataUrl(file);
-      fromImage.mutate({ data: { imageDataUrl: dataUrl } }, {
+      const blob = await fileToResizedBlob(file);
+      const objectPath = await uploadImageToObjectStorage(blob, "fridge.jpg");
+      fromImage.mutate({ data: { imageObjectPath: objectPath } }, {
         onSuccess: (added) => {
           refresh();
           toast({ title: `Added ${added.length} item${added.length === 1 ? "" : "s"}` });

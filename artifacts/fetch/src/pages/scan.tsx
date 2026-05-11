@@ -16,11 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, ImagePlus, RotateCcw, AlertTriangle, Leaf, CheckCircle2, X } from "lucide-react";
 import { HealthRing } from "@/components/health-ring";
-import { fileToResizedDataUrl } from "@/lib/image";
+import { fileToResizedBlob, fileToResizedDataUrl, objectPathToUrl, uploadImageToObjectStorage } from "@/lib/image";
 
 export default function ScanPage() {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [note, setNote] = useState("");
   const [scan, setScan] = useState<Scan | null>(null);
   const { toast } = useToast();
@@ -30,8 +32,12 @@ export default function ScanPage() {
 
   async function onPick(file: File) {
     try {
-      const url = await fileToResizedDataUrl(file);
-      setDataUrl(url);
+      const [dataUrl, blob] = await Promise.all([
+        fileToResizedDataUrl(file),
+        fileToResizedBlob(file),
+      ]);
+      setPreviewUrl(dataUrl);
+      setPendingBlob(blob);
       setScan(null);
     } catch (err) {
       toast({ title: "Couldn't read that image", description: String(err), variant: "destructive" });
@@ -39,16 +45,27 @@ export default function ScanPage() {
   }
 
   function reset() {
-    setDataUrl(null);
+    setPreviewUrl(null);
+    setPendingBlob(null);
     setNote("");
     setScan(null);
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  function submit() {
-    if (!dataUrl) return;
+  async function submit() {
+    if (!pendingBlob) return;
+    setUploading(true);
+    let objectPath: string;
+    try {
+      objectPath = await uploadImageToObjectStorage(pendingBlob, "scan.jpg");
+    } catch (err) {
+      setUploading(false);
+      toast({ title: "Upload failed", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
+      return;
+    }
+    setUploading(false);
     analyze.mutate(
-      { data: { imageDataUrl: dataUrl, note: note || undefined } },
+      { data: { imageObjectPath: objectPath, note: note || undefined } },
       {
         onSuccess: (result) => {
           setScan(result);
@@ -64,6 +81,9 @@ export default function ScanPage() {
     );
   }
 
+  const busy = uploading || analyze.isPending;
+  const scanImageUrl = scan ? objectPathToUrl(scan.imageObjectPath) : undefined;
+
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
       <header>
@@ -73,7 +93,7 @@ export default function ScanPage() {
 
       <Card className="border-card-border overflow-hidden">
         <CardContent className="p-0">
-          {!dataUrl ? (
+          {!previewUrl ? (
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -90,7 +110,7 @@ export default function ScanPage() {
             </button>
           ) : (
             <div className="relative">
-              <img src={dataUrl} alt="To analyze" className="w-full max-h-[60vh] object-cover" data-testid="img-preview" />
+              <img src={previewUrl} alt="To analyze" className="w-full max-h-[60vh] object-cover" data-testid="img-preview" />
               <Button
                 variant="secondary"
                 size="sm"
@@ -117,7 +137,7 @@ export default function ScanPage() {
         </CardContent>
       </Card>
 
-      {dataUrl && !scan ? (
+      {previewUrl && !scan ? (
         <Card className="border-card-border">
           <CardContent className="p-5 space-y-4">
             <div>
@@ -134,12 +154,16 @@ export default function ScanPage() {
             <div className="flex gap-2">
               <Button
                 onClick={submit}
-                disabled={analyze.isPending}
+                disabled={busy}
                 className="rounded-full"
                 size="lg"
                 data-testid="button-analyze"
               >
-                {analyze.isPending ? <><Spinner className="mr-2" /> Analyzing…</> : <><ImagePlus className="w-4 h-4 mr-2" /> Analyze</>}
+                {busy ? (
+                  <><Spinner className="mr-2" /> {uploading ? "Uploading…" : "Analyzing…"}</>
+                ) : (
+                  <><ImagePlus className="w-4 h-4 mr-2" /> Analyze</>
+                )}
               </Button>
               <Button
                 variant="outline"
@@ -157,6 +181,9 @@ export default function ScanPage() {
       {scan ? (
         <Card className="border-card-border animate-in fade-in slide-in-from-bottom-4 duration-500">
           <CardContent className="p-5 space-y-5">
+            {scanImageUrl ? (
+              <img src={scanImageUrl} alt={scan.foodName} className="w-full rounded-2xl max-h-72 object-cover" />
+            ) : null}
             <div className="flex items-start gap-4">
               <HealthRing score={scan.healthScore} size={72} />
               <div className="flex-1 min-w-0">

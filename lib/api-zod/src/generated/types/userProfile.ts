@@ -5,6 +5,9 @@
  * Fetch — AI-powered food discovery and nutrition management
  * OpenAPI spec version: 0.1.0
  */
+import type { AllergyEntry } from "./allergyEntry";
+import type { CookingSkill } from "./cookingSkill";
+import type { HealthGoal } from "./healthGoal";
 
 export interface UserProfile {
   userId: string;
@@ -12,10 +15,16 @@ export interface UserProfile {
   displayName: string | null;
   /** e.g. omnivore, vegetarian, vegan, pescatarian, keto, paleo. */
   dietaryStyle: string;
+  /** Legacy flat list (kept for backward compat). Prefer allergiesDetailed. */
   allergies: string[];
+  allergiesDetailed: AllergyEntry[];
   dislikes: string[];
   /** @nullable */
   healthGoals: string | null;
+  healthGoalsList: HealthGoal[];
+  cookingSkill: CookingSkill;
+  /** @minimum 1 */
+  householdSize: number;
   /** @nullable */
   dailyCalorieTarget: number | null;
   cuisinePreferences: string[];

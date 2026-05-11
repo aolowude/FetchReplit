@@ -1,10 +1,10 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { Readable } from "node:stream";
 import { and, desc, eq } from "drizzle-orm";
 import {
   db,
   scansTable,
   userProfilesTable,
-  memoryFactsTable,
   type ScanRow,
   type ScanIngredient,
   type DietaryCompliance,
@@ -14,8 +14,12 @@ import { AnalyzeScanBody } from "@workspace/api-zod";
 import { chatJson, AiError } from "../lib/ai";
 import { logMemoryEvent } from "../lib/memoryEvents";
 import { logger } from "../lib/logger";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { ObjectPermission } from "../lib/objectAcl";
+import { appendMemoryItem, loadMemory } from "./memory";
 
 const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
 
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.isAuthenticated()) {
@@ -38,7 +42,7 @@ function toResponse(row: ScanRow) {
   return {
     id: row.id,
     userId: row.userId,
-    imageDataUrl: row.imageDataUrl,
+    imageObjectPath: row.imageObjectPath,
     foodName: row.foodName,
     description: row.description,
     calories: row.calories,
@@ -98,6 +102,22 @@ function normaliseAllergens(input: AllergenWarning[] | undefined): AllergenWarni
     .slice(0, 10);
 }
 
+async function objectPathToDataUrl(objectPath: string, userId: string): Promise<string> {
+  const file = await objectStorageService.getObjectEntityFile(objectPath);
+  const canAccess = await objectStorageService.canAccessObjectEntity({
+    userId,
+    objectFile: file,
+    requestedPermission: ObjectPermission.READ,
+  });
+  if (!canAccess) {
+    throw new ObjectNotFoundError();
+  }
+  const [meta] = await file.getMetadata();
+  const contentType = String(meta.contentType ?? "image/jpeg");
+  const [buffer] = await file.download();
+  return `data:${contentType};base64,${buffer.toString("base64")}`;
+}
+
 interface InferredFact {
   category: string;
   content: string;
@@ -120,14 +140,12 @@ This meal: ${scan.foodName} — ${scan.description}. Tags: ${scan.tags.join(", "
     for (const f of facts) {
       const content = String(f.content ?? "").trim();
       if (!content) continue;
-      await db.insert(memoryFactsTable).values({
-        userId,
-        tier: "inferred_preferences",
-        source: "inferred",
+      const item = await appendMemoryItem(userId, "inferred_preferences", {
         category: String(f.category ?? "preference"),
         content,
+        source: "inferred",
       });
-      await logMemoryEvent(userId, "memory.fact_inferred", { content, scanId: scan.id });
+      await logMemoryEvent(userId, "memory.fact_inferred", { content, scanId: scan.id, id: item.id });
     }
   } catch (err) {
     logger.warn({ err, userId, scanId: scan.id }, "post-scan memory inference failed");
@@ -141,11 +159,25 @@ router.post("/scans/analyze", requireAuth, async (req: Request, res: Response) =
     res.status(400).json({ error: "bad_request", message: parsed.error.message });
     return;
   }
-  const { imageDataUrl, note } = parsed.data;
-  if (!imageDataUrl.startsWith("data:image/")) {
-    res.status(400).json({ error: "bad_request", message: "imageDataUrl must be a data URL." });
+  const { imageObjectPath, note } = parsed.data;
+  if (!imageObjectPath.startsWith("/objects/")) {
+    res.status(400).json({ error: "bad_request", message: "imageObjectPath must be an object storage path." });
     return;
   }
+
+  let imageDataUrl: string;
+  try {
+    imageDataUrl = await objectPathToDataUrl(imageObjectPath, user.id);
+  } catch (err) {
+    if (err instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "not_found", message: "Uploaded image not found." });
+      return;
+    }
+    logger.error({ err, userId: user.id }, "failed to load uploaded image");
+    res.status(500).json({ error: "storage_error", message: "Could not read uploaded image." });
+    return;
+  }
+
   const profile = await db
     .select()
     .from(userProfilesTable)
@@ -180,7 +212,7 @@ router.post("/scans/analyze", requireAuth, async (req: Request, res: Response) =
     .insert(scansTable)
     .values({
       userId: user.id,
-      imageDataUrl,
+      imageObjectPath,
       foodName: String(analysis.foodName ?? "Unknown dish"),
       description: String(analysis.description ?? ""),
       calories: Math.max(0, Math.round(Number(analysis.calories) || 0)),
@@ -206,16 +238,12 @@ router.post("/scans/analyze", requireAuth, async (req: Request, res: Response) =
   });
 
   // Fire-and-forget memory inference; don't block the user.
-  const recentFacts = await db
-    .select()
-    .from(memoryFactsTable)
-    .where(eq(memoryFactsTable.userId, user.id))
-    .orderBy(desc(memoryFactsTable.createdAt))
-    .limit(15);
-  void inferAndStoreMemory(user.id, row, {
-    dietaryStyle,
-    recentMemory: recentFacts.map((f) => f.content),
-  });
+  const memoryDoc = await loadMemory(user.id);
+  const recentMemory = [
+    ...memoryDoc.stableProfile.slice(0, 5),
+    ...memoryDoc.inferredPreferences.slice(0, 10),
+  ].map((f) => f.content);
+  void inferAndStoreMemory(user.id, row, { dietaryStyle, recentMemory });
 
   res.json(toResponse(row));
 });
@@ -232,25 +260,27 @@ router.get("/scans", requireAuth, async (req: Request, res: Response) => {
 
 router.get("/scans/:id", requireAuth, async (req: Request, res: Response) => {
   const user = req.user!;
-  const rows = await db
+  const id = String(req.params.id);
+  const [row] = await db
     .select()
     .from(scansTable)
-    .where(and(eq(scansTable.userId, user.id), eq(scansTable.id, String(req.params.id))))
+    .where(and(eq(scansTable.userId, user.id), eq(scansTable.id, id)))
     .limit(1);
-  if (!rows[0]) {
+  if (!row) {
     res.status(404).json({ error: "not_found", message: "Scan not found." });
     return;
   }
-  res.json(toResponse(rows[0]));
+  res.json(toResponse(row));
 });
 
 router.delete("/scans/:id", requireAuth, async (req: Request, res: Response) => {
   const user = req.user!;
+  const id = String(req.params.id);
   const deleted = await db
     .delete(scansTable)
-    .where(and(eq(scansTable.userId, user.id), eq(scansTable.id, String(req.params.id))))
+    .where(and(eq(scansTable.userId, user.id), eq(scansTable.id, id)))
     .returning({ id: scansTable.id });
-  if (deleted.length === 0) {
+  if (!deleted.length) {
     res.status(404).json({ error: "not_found", message: "Scan not found." });
     return;
   }

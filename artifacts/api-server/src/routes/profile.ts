@@ -1,7 +1,14 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { eq } from "drizzle-orm";
-import { db, userProfilesTable, type UserProfileRow } from "@workspace/db";
+import {
+  db,
+  userProfilesTable,
+  COOKING_SKILLS,
+  type UserProfileRow,
+  type CookingSkill,
+} from "@workspace/db";
 import { UpdateProfileBody } from "@workspace/api-zod";
+import { logMemoryEvent } from "../lib/memoryEvents";
 
 const router: IRouter = Router();
 
@@ -19,9 +26,13 @@ function toResponse(row: UserProfileRow) {
     displayName: row.displayName,
     dietaryStyle: row.dietaryStyle,
     allergies: row.allergies,
+    allergiesDetailed: row.allergiesDetailed,
     dislikes: row.dislikes,
     cuisinePreferences: row.cuisinePreferences,
     healthGoals: row.healthGoals,
+    healthGoalsList: row.healthGoalsList,
+    cookingSkill: row.cookingSkill as CookingSkill,
+    householdSize: row.householdSize,
     dailyCalorieTarget: row.dailyCalorieTarget,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -56,11 +67,22 @@ router.patch("/profile", requireAuth, async (req: Request, res: Response) => {
     return;
   }
   await getOrCreateProfile(user.id);
+  const patch: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
+  if (Array.isArray(parsed.data.allergiesDetailed) && !Array.isArray(parsed.data.allergies)) {
+    patch.allergies = parsed.data.allergiesDetailed.map((a) => a.name);
+  }
+  if (parsed.data.cookingSkill && !COOKING_SKILLS.includes(parsed.data.cookingSkill as CookingSkill)) {
+    delete patch.cookingSkill;
+  }
+  if (typeof parsed.data.householdSize === "number" && parsed.data.householdSize < 1) {
+    patch.householdSize = 1;
+  }
   const [updated] = await db
     .update(userProfilesTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set(patch)
     .where(eq(userProfilesTable.userId, user.id))
     .returning();
+  void logMemoryEvent(user.id, "profile.updated", {});
   res.json(toResponse(updated));
 });
 

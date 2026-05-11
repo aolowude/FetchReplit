@@ -51,16 +51,59 @@ export const LogoutSuccessValue = {
 } as const;
 export type LogoutSuccess = typeof LogoutSuccessValue;
 
+export type AllergenSeverity =
+  (typeof AllergenSeverity)[keyof typeof AllergenSeverity];
+
+export const AllergenSeverity = {
+  mild: "mild",
+  moderate: "moderate",
+  severe: "severe",
+} as const;
+
+export interface AllergyEntry {
+  /** @minLength 1 */
+  name: string;
+  severity: AllergenSeverity;
+}
+
+export type HealthGoal = (typeof HealthGoal)[keyof typeof HealthGoal];
+
+export const HealthGoal = {
+  lose_weight: "lose_weight",
+  gain_muscle: "gain_muscle",
+  more_protein: "more_protein",
+  less_sugar: "less_sugar",
+  more_plants: "more_plants",
+  more_fiber: "more_fiber",
+  balanced_macros: "balanced_macros",
+  manage_blood_sugar: "manage_blood_sugar",
+  heart_health: "heart_health",
+} as const;
+
+export type CookingSkill = (typeof CookingSkill)[keyof typeof CookingSkill];
+
+export const CookingSkill = {
+  beginner: "beginner",
+  intermediate: "intermediate",
+  advanced: "advanced",
+} as const;
+
 export interface UserProfile {
   userId: string;
   /** @nullable */
   displayName: string | null;
   /** e.g. omnivore, vegetarian, vegan, pescatarian, keto, paleo. */
   dietaryStyle: string;
+  /** Legacy flat list (kept for backward compat). Prefer allergiesDetailed. */
   allergies: string[];
+  allergiesDetailed: AllergyEntry[];
   dislikes: string[];
   /** @nullable */
   healthGoals: string | null;
+  healthGoalsList: HealthGoal[];
+  cookingSkill: CookingSkill;
+  /** @minimum 1 */
+  householdSize: number;
   /** @nullable */
   dailyCalorieTarget: number | null;
   cuisinePreferences: string[];
@@ -71,9 +114,14 @@ export interface UserProfileUpdate {
   displayName?: string | null;
   dietaryStyle?: string;
   allergies?: string[];
+  allergiesDetailed?: AllergyEntry[];
   dislikes?: string[];
   /** @nullable */
   healthGoals?: string | null;
+  healthGoalsList?: HealthGoal[];
+  cookingSkill?: CookingSkill;
+  /** @minimum 1 */
+  householdSize?: number;
   /** @nullable */
   dailyCalorieTarget?: number | null;
   cuisinePreferences?: string[];
@@ -104,6 +152,43 @@ export interface MemoryFact {
   createdAt: string;
 }
 
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlRequest;
+}
+
+export interface HomeRecipeIdea {
+  id: string;
+  title: string;
+  reason: string;
+  usedIngredients: string[];
+  missingIngredients: string[];
+  /** @minimum 0 */
+  minutes: number;
+}
+
+/**
+ * Structured per-user memory document organised by tier.
+ */
+export interface UserMemory {
+  /** Long-lived facts the user explicitly told us (preferences, allergies, goals). */
+  stableProfile: MemoryFact[];
+  /** Facts the system learned by observing meals over time. */
+  inferredPreferences: MemoryFact[];
+  /** Short-lived contextual notes (e.g. "travelling this week"). */
+  contextualState: MemoryFact[];
+}
+
 export interface MemoryFactInput {
   tier?: MemoryTier;
   /** @minLength 1 */
@@ -114,10 +199,10 @@ export interface MemoryFactInput {
 
 export interface ScanInput {
   /**
-   * Base64-encoded image as a data URL (e.g. `data:image/jpeg;base64,...`).
+   * Object path returned from `POST /storage/uploads/request-url` after the client PUTs the photo to GCS.
    * @minLength 1
    */
-  imageDataUrl: string;
+  imageObjectPath: string;
   /** Optional user note to bias analysis (e.g. "lunch portion"). */
   note?: string;
 }
@@ -154,7 +239,8 @@ export interface AllergenWarning {
 export interface Scan {
   id: string;
   userId: string;
-  imageDataUrl: string;
+  /** Object storage path of the uploaded photo, e.g. `/objects/uploads/uuid`. Serve via `GET /api/storage{imageObjectPath}`. */
+  imageObjectPath: string;
   foodName: string;
   description: string;
   calories: number;

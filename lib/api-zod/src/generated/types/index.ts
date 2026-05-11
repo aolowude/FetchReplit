@@ -6,19 +6,24 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./allergenSeverity";
 export * from "./allergenWarning";
 export * from "./allergenWarningSeverity";
+export * from "./allergyEntry";
 export * from "./authorizationSessionHeaderParameter";
 export * from "./authUser";
 export * from "./authUserEnvelope";
 export * from "./beginBrowserLoginParams";
+export * from "./cookingSkill";
 export * from "./dietaryCompliance";
 export * from "./errorEnvelope";
 export * from "./fridgeItem";
 export * from "./fridgeItemInput";
 export * from "./fridgeItemUpdate";
 export * from "./handleBrowserLoginCallbackParams";
+export * from "./healthGoal";
 export * from "./healthStatus";
+export * from "./homeRecipeIdea";
 export * from "./homeSummary";
 export * from "./logoutSuccess";
 export * from "./memoryFact";
@@ -33,5 +38,8 @@ export * from "./scan";
 export * from "./scanIngredient";
 export * from "./scanInput";
 export * from "./suggestion";
+export * from "./uploadUrlRequest";
+export * from "./uploadUrlResponse";
+export * from "./userMemory";
 export * from "./userProfile";
 export * from "./userProfileUpdate";

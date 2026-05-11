@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { HealthRing } from "@/components/health-ring";
 import { Search, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { objectPathToUrl } from "@/lib/image";
 
 export default function HistoryPage() {
   const q = useListScans({ query: { queryKey: getListScansQueryKey() } });
@@ -83,7 +84,10 @@ export default function HistoryPage() {
               data-testid={`card-history-${s.id}`}
             >
               <div className="aspect-[4/3] bg-muted">
-                {s.imageDataUrl ? <img src={s.imageDataUrl} alt={s.foodName} className="w-full h-full object-cover" loading="lazy" /> : null}
+                {(() => {
+                  const url = objectPathToUrl(s.imageObjectPath);
+                  return url ? <img src={url} alt={s.foodName} className="w-full h-full object-cover" loading="lazy" /> : null;
+                })()}
               </div>
               <div className="p-4 flex items-start gap-3">
                 <div className="flex-1 min-w-0">
@@ -110,9 +114,10 @@ export default function HistoryPage() {
                 <SheetTitle className="font-serif text-2xl">{active.foodName}</SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-4">
-                {active.imageDataUrl ? (
-                  <img src={active.imageDataUrl} alt={active.foodName} className="w-full rounded-2xl" />
-                ) : null}
+                {(() => {
+                  const url = objectPathToUrl(active.imageObjectPath);
+                  return url ? <img src={url} alt={active.foodName} className="w-full rounded-2xl" /> : null;
+                })()}
                 <div className="flex items-center gap-4">
                   <HealthRing score={active.healthScore} size={64} />
                   <div className="text-sm text-muted-foreground">{active.description}</div>

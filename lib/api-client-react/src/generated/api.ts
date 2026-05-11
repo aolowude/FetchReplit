@@ -25,6 +25,7 @@ import type {
   FridgeItemUpdate,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
+  HomeRecipeIdea,
   HomeSummary,
   LogoutSuccess,
   MemoryFact,
@@ -36,6 +37,9 @@ import type {
   Scan,
   ScanInput,
   Suggestion,
+  UploadUrlRequest,
+  UploadUrlResponse,
+  UserMemory,
   UserProfile,
   UserProfileUpdate,
 } from "./api.schemas";
@@ -48,6 +52,167 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const getRequestUploadUrlUrl = () => {
+  return `/api/storage/uploads/request-url`;
+};
+
+export const requestUploadUrl = async (
+  uploadUrlRequest: UploadUrlRequest,
+  options?: RequestInit,
+): Promise<UploadUrlResponse> => {
+  return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(uploadUrlRequest),
+  });
+};
+
+export const getRequestUploadUrlMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<UploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<UploadUrlRequest> },
+  TContext
+> => {
+  const mutationKey = ["requestUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    { data: BodyType<UploadUrlRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestUploadUrl>>
+>;
+export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>;
+export type RequestUploadUrlMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const useRequestUploadUrl = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<UploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<UploadUrlRequest> },
+  TContext
+> => {
+  return useMutation(getRequestUploadUrlMutationOptions(options));
+};
+
+/**
+ * @summary Quick recipe ideas based on what's in the fridge
+ */
+export const getGetHomeRecipesUrl = () => {
+  return `/api/home/recipes`;
+};
+
+export const getHomeRecipes = async (
+  options?: RequestInit,
+): Promise<HomeRecipeIdea[]> => {
+  return customFetch<HomeRecipeIdea[]>(getGetHomeRecipesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetHomeRecipesQueryKey = () => {
+  return [`/api/home/recipes`] as const;
+};
+
+export const getGetHomeRecipesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getHomeRecipes>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHomeRecipes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetHomeRecipesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getHomeRecipes>>> = ({
+    signal,
+  }) => getHomeRecipes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getHomeRecipes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetHomeRecipesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getHomeRecipes>>
+>;
+export type GetHomeRecipesQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Quick recipe ideas based on what's in the fridge
+ */
+
+export function useGetHomeRecipes<
+  TData = Awaited<ReturnType<typeof getHomeRecipes>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHomeRecipes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetHomeRecipesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * Returns server health status
@@ -811,31 +976,31 @@ export const useUpdateProfile = <
 };
 
 /**
- * @summary List the user's memory facts
+ * @summary Get the user's structured memory document
  */
-export const getListMemoryFactsUrl = () => {
+export const getGetUserMemoryUrl = () => {
   return `/api/memory`;
 };
 
-export const listMemoryFacts = async (
+export const getUserMemory = async (
   options?: RequestInit,
-): Promise<MemoryFact[]> => {
-  return customFetch<MemoryFact[]>(getListMemoryFactsUrl(), {
+): Promise<UserMemory> => {
+  return customFetch<UserMemory>(getGetUserMemoryUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListMemoryFactsQueryKey = () => {
+export const getGetUserMemoryQueryKey = () => {
   return [`/api/memory`] as const;
 };
 
-export const getListMemoryFactsQueryOptions = <
-  TData = Awaited<ReturnType<typeof listMemoryFacts>>,
+export const getGetUserMemoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserMemory>>,
   TError = ErrorType<ErrorEnvelope>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listMemoryFacts>>,
+    Awaited<ReturnType<typeof getUserMemory>>,
     TError,
     TData
   >;
@@ -843,40 +1008,40 @@ export const getListMemoryFactsQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListMemoryFactsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getGetUserMemoryQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMemoryFacts>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserMemory>>> = ({
     signal,
-  }) => listMemoryFacts({ signal, ...requestOptions });
+  }) => getUserMemory({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listMemoryFacts>>,
+    Awaited<ReturnType<typeof getUserMemory>>,
     TError,
     TData
   > & { queryKey: QueryKey };
 };
 
-export type ListMemoryFactsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listMemoryFacts>>
+export type GetUserMemoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserMemory>>
 >;
-export type ListMemoryFactsQueryError = ErrorType<ErrorEnvelope>;
+export type GetUserMemoryQueryError = ErrorType<ErrorEnvelope>;
 
 /**
- * @summary List the user's memory facts
+ * @summary Get the user's structured memory document
  */
 
-export function useListMemoryFacts<
-  TData = Awaited<ReturnType<typeof listMemoryFacts>>,
+export function useGetUserMemory<
+  TData = Awaited<ReturnType<typeof getUserMemory>>,
   TError = ErrorType<ErrorEnvelope>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listMemoryFacts>>,
+    Awaited<ReturnType<typeof getUserMemory>>,
     TError,
     TData
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListMemoryFactsQueryOptions(options);
+  const queryOptions = getGetUserMemoryQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

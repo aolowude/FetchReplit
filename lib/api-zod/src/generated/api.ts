@@ -8,6 +8,43 @@
 import * as zod from "zod";
 
 /**
+ * @summary Request a presigned URL for file upload
+ */
+
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string().min(1),
+  size: zod.number().min(1),
+  contentType: zod.string().min(1),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string().url(),
+  objectPath: zod.string(),
+  metadata: zod
+    .object({
+      name: zod.string().min(1),
+      size: zod.number().min(1),
+      contentType: zod.string().min(1),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Quick recipe ideas based on what's in the fridge
+ */
+export const getHomeRecipesResponseMinutesMin = 0;
+
+export const GetHomeRecipesResponseItem = zod.object({
+  id: zod.string(),
+  title: zod.string(),
+  reason: zod.string(),
+  usedIngredients: zod.array(zod.string()),
+  missingIngredients: zod.array(zod.string()),
+  minutes: zod.number().min(getHomeRecipesResponseMinutesMin),
+});
+export const GetHomeRecipesResponse = zod.array(GetHomeRecipesResponseItem);
+
+/**
  * Returns server health status
  * @summary Health check
  */
@@ -102,15 +139,41 @@ export const LogoutMobileSessionResponse = zod.object({
 /**
  * @summary Get the current user's profile and preferences
  */
+
 export const GetProfileResponse = zod.object({
   userId: zod.string(),
   displayName: zod.string().nullable(),
   dietaryStyle: zod
     .string()
     .describe("e.g. omnivore, vegetarian, vegan, pescatarian, keto, paleo."),
-  allergies: zod.array(zod.string()),
+  allergies: zod
+    .array(zod.string())
+    .describe(
+      "Legacy flat list (kept for backward compat). Prefer allergiesDetailed.",
+    ),
+  allergiesDetailed: zod.array(
+    zod.object({
+      name: zod.string().min(1),
+      severity: zod.enum(["mild", "moderate", "severe"]),
+    }),
+  ),
   dislikes: zod.array(zod.string()),
   healthGoals: zod.string().nullable(),
+  healthGoalsList: zod.array(
+    zod.enum([
+      "lose_weight",
+      "gain_muscle",
+      "more_protein",
+      "less_sugar",
+      "more_plants",
+      "more_fiber",
+      "balanced_macros",
+      "manage_blood_sugar",
+      "heart_health",
+    ]),
+  ),
+  cookingSkill: zod.enum(["beginner", "intermediate", "advanced"]),
+  householdSize: zod.number().min(1),
   dailyCalorieTarget: zod.number().nullable(),
   cuisinePreferences: zod.array(zod.string()),
 });
@@ -118,12 +181,38 @@ export const GetProfileResponse = zod.object({
 /**
  * @summary Update profile and preferences
  */
+
 export const UpdateProfileBody = zod.object({
   displayName: zod.string().nullish(),
   dietaryStyle: zod.string().optional(),
   allergies: zod.array(zod.string()).optional(),
+  allergiesDetailed: zod
+    .array(
+      zod.object({
+        name: zod.string().min(1),
+        severity: zod.enum(["mild", "moderate", "severe"]),
+      }),
+    )
+    .optional(),
   dislikes: zod.array(zod.string()).optional(),
   healthGoals: zod.string().nullish(),
+  healthGoalsList: zod
+    .array(
+      zod.enum([
+        "lose_weight",
+        "gain_muscle",
+        "more_protein",
+        "less_sugar",
+        "more_plants",
+        "more_fiber",
+        "balanced_macros",
+        "manage_blood_sugar",
+        "heart_health",
+      ]),
+    )
+    .optional(),
+  cookingSkill: zod.enum(["beginner", "intermediate", "advanced"]).optional(),
+  householdSize: zod.number().min(1).optional(),
   dailyCalorieTarget: zod.number().nullish(),
   cuisinePreferences: zod.array(zod.string()).optional(),
 });
@@ -134,31 +223,103 @@ export const UpdateProfileResponse = zod.object({
   dietaryStyle: zod
     .string()
     .describe("e.g. omnivore, vegetarian, vegan, pescatarian, keto, paleo."),
-  allergies: zod.array(zod.string()),
+  allergies: zod
+    .array(zod.string())
+    .describe(
+      "Legacy flat list (kept for backward compat). Prefer allergiesDetailed.",
+    ),
+  allergiesDetailed: zod.array(
+    zod.object({
+      name: zod.string().min(1),
+      severity: zod.enum(["mild", "moderate", "severe"]),
+    }),
+  ),
   dislikes: zod.array(zod.string()),
   healthGoals: zod.string().nullable(),
+  healthGoalsList: zod.array(
+    zod.enum([
+      "lose_weight",
+      "gain_muscle",
+      "more_protein",
+      "less_sugar",
+      "more_plants",
+      "more_fiber",
+      "balanced_macros",
+      "manage_blood_sugar",
+      "heart_health",
+    ]),
+  ),
+  cookingSkill: zod.enum(["beginner", "intermediate", "advanced"]),
+  householdSize: zod.number().min(1),
   dailyCalorieTarget: zod.number().nullable(),
   cuisinePreferences: zod.array(zod.string()),
 });
 
 /**
- * @summary List the user's memory facts
+ * @summary Get the user's structured memory document
  */
-export const ListMemoryFactsResponseItem = zod.object({
-  id: zod.string().uuid(),
-  tier: zod.enum([
-    "stable_profile",
-    "inferred_preferences",
-    "contextual_state",
-  ]),
-  source: zod.enum(["user", "inferred"]),
-  category: zod
-    .string()
-    .describe("e.g. preference, allergy, goal, dislike, routine."),
-  content: zod.string(),
-  createdAt: zod.coerce.date(),
-});
-export const ListMemoryFactsResponse = zod.array(ListMemoryFactsResponseItem);
+export const GetUserMemoryResponse = zod
+  .object({
+    stableProfile: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          tier: zod.enum([
+            "stable_profile",
+            "inferred_preferences",
+            "contextual_state",
+          ]),
+          source: zod.enum(["user", "inferred"]),
+          category: zod
+            .string()
+            .describe("e.g. preference, allergy, goal, dislike, routine."),
+          content: zod.string(),
+          createdAt: zod.coerce.date(),
+        }),
+      )
+      .describe(
+        "Long-lived facts the user explicitly told us (preferences, allergies, goals).",
+      ),
+    inferredPreferences: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          tier: zod.enum([
+            "stable_profile",
+            "inferred_preferences",
+            "contextual_state",
+          ]),
+          source: zod.enum(["user", "inferred"]),
+          category: zod
+            .string()
+            .describe("e.g. preference, allergy, goal, dislike, routine."),
+          content: zod.string(),
+          createdAt: zod.coerce.date(),
+        }),
+      )
+      .describe("Facts the system learned by observing meals over time."),
+    contextualState: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          tier: zod.enum([
+            "stable_profile",
+            "inferred_preferences",
+            "contextual_state",
+          ]),
+          source: zod.enum(["user", "inferred"]),
+          category: zod
+            .string()
+            .describe("e.g. preference, allergy, goal, dislike, routine."),
+          content: zod.string(),
+          createdAt: zod.coerce.date(),
+        }),
+      )
+      .describe(
+        'Short-lived contextual notes (e.g. \"travelling this week\").',
+      ),
+  })
+  .describe("Structured per-user memory document organised by tier.");
 
 /**
  * @summary Add a memory fact
@@ -176,7 +337,7 @@ export const CreateMemoryFactBody = zod.object({
  * @summary Delete a single memory fact
  */
 export const DeleteMemoryFactParams = zod.object({
-  id: zod.coerce.string().uuid(),
+  id: zod.coerce.string(),
 });
 
 /**
@@ -184,11 +345,11 @@ export const DeleteMemoryFactParams = zod.object({
  */
 
 export const AnalyzeScanBody = zod.object({
-  imageDataUrl: zod
+  imageObjectPath: zod
     .string()
     .min(1)
     .describe(
-      "Base64-encoded image as a data URL (e.g. `data:image\/jpeg;base64,...`).",
+      "Object path returned from `POST \/storage\/uploads\/request-url` after the client PUTs the photo to GCS.",
     ),
   note: zod
     .string()
@@ -205,7 +366,11 @@ export const analyzeScanResponseEnvironmentalScoreMax = 100;
 export const AnalyzeScanResponse = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  imageDataUrl: zod.string(),
+  imageObjectPath: zod
+    .string()
+    .describe(
+      "Object storage path of the uploaded photo, e.g. `\/objects\/uploads\/uuid`. Serve via `GET \/api\/storage{imageObjectPath}`.",
+    ),
   foodName: zod.string(),
   description: zod.string(),
   calories: zod.number(),
@@ -262,7 +427,11 @@ export const listScansResponseEnvironmentalScoreMax = 100;
 export const ListScansResponseItem = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  imageDataUrl: zod.string(),
+  imageObjectPath: zod
+    .string()
+    .describe(
+      "Object storage path of the uploaded photo, e.g. `\/objects\/uploads\/uuid`. Serve via `GET \/api\/storage{imageObjectPath}`.",
+    ),
   foodName: zod.string(),
   description: zod.string(),
   calories: zod.number(),
@@ -324,7 +493,11 @@ export const getScanResponseEnvironmentalScoreMax = 100;
 export const GetScanResponse = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  imageDataUrl: zod.string(),
+  imageObjectPath: zod
+    .string()
+    .describe(
+      "Object storage path of the uploaded photo, e.g. `\/objects\/uploads\/uuid`. Serve via `GET \/api\/storage{imageObjectPath}`.",
+    ),
   foodName: zod.string(),
   description: zod.string(),
   calories: zod.number(),
@@ -445,11 +618,11 @@ export const DeleteFridgeItemParams = zod.object({
  */
 
 export const AddFridgeItemsFromImageBody = zod.object({
-  imageDataUrl: zod
+  imageObjectPath: zod
     .string()
     .min(1)
     .describe(
-      "Base64-encoded image as a data URL (e.g. `data:image\/jpeg;base64,...`).",
+      "Object path returned from `POST \/storage\/uploads\/request-url` after the client PUTs the photo to GCS.",
     ),
   note: zod
     .string()
@@ -527,7 +700,11 @@ export const GetHomeSummaryResponse = zod.object({
     zod.object({
       id: zod.string().uuid(),
       userId: zod.string(),
-      imageDataUrl: zod.string(),
+      imageObjectPath: zod
+        .string()
+        .describe(
+          "Object storage path of the uploaded photo, e.g. `\/objects\/uploads\/uuid`. Serve via `GET \/api\/storage{imageObjectPath}`.",
+        ),
       foodName: zod.string(),
       description: zod.string(),
       calories: zod.number(),

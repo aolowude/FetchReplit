@@ -5,15 +5,23 @@
  * Fetch — AI-powered food discovery and nutrition management
  * OpenAPI spec version: 0.1.0
  */
+import type { AllergyEntry } from "./allergyEntry";
+import type { CookingSkill } from "./cookingSkill";
+import type { HealthGoal } from "./healthGoal";
 
 export interface UserProfileUpdate {
   /** @nullable */
   displayName?: string | null;
   dietaryStyle?: string;
   allergies?: string[];
+  allergiesDetailed?: AllergyEntry[];
   dislikes?: string[];
   /** @nullable */
   healthGoals?: string | null;
+  healthGoalsList?: HealthGoal[];
+  cookingSkill?: CookingSkill;
+  /** @minimum 1 */
+  householdSize?: number;
   /** @nullable */
   dailyCalorieTarget?: number | null;
   cuisinePreferences?: string[];
