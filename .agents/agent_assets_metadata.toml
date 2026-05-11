@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "kc54ZMLH5SzgkwkEhPK9Y"
+uri = "file://artifacts/fetch/public/icon-512.png"
+type = "image"
+title = "App icon for Fetch"
+
+[[generated]]
+id = "VomFc1MmRUt5HdpD3qtbF"
+uri = "file://artifacts/fetch/public/icon-192.png"
+type = "image"
+title = "Small app icon for Fetch"

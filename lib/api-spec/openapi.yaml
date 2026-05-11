@@ -3,13 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Fetch — AI-powered food discovery and nutrition management
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: Auth
+    description: Browser and mobile authentication endpoints.
+  - name: Profile
+    description: User profile and preferences.
+  - name: Memory
+    description: User-editable memory facts.
+  - name: Scans
+    description: AI vision-based food scanning and nutrition analysis.
+  - name: Fridge
+    description: MyFridge inventory and AI recipe generation.
+  - name: Home
+    description: Personalised home suggestions and daily summary.
 paths:
   /healthz:
     get:
@@ -24,7 +36,596 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start the browser OIDC login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          description: Relative path to redirect to after login (must start with `/`). Defaults to `/`.
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the OIDC authorization endpoint.
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete the browser OIDC login flow
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iss
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect to the `returnTo` path on success.
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: Clear the session and begin OIDC logout
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '302':
+          description: Redirect to the OIDC provider logout URL.
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile OIDC code for a session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+      responses:
+        '200':
+          description: Session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Token did not contain claims.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Token exchange failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session token
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+      responses:
+        '200':
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+
+  /profile:
+    get:
+      tags: [Profile]
+      operationId: getProfile
+      summary: Get the current user's profile and preferences
+      responses:
+        '200':
+          description: Profile loaded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    patch:
+      tags: [Profile]
+      operationId: updateProfile
+      summary: Update profile and preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileUpdate'
+      responses:
+        '200':
+          description: Profile updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /memory:
+    get:
+      tags: [Memory]
+      operationId: listMemoryFacts
+      summary: List the user's memory facts
+      responses:
+        '200':
+          description: Facts loaded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemoryFact'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      tags: [Memory]
+      operationId: createMemoryFact
+      summary: Add a memory fact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryFactInput'
+      responses:
+        '201':
+          description: Fact created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryFact'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags: [Memory]
+      operationId: clearAllMemoryFacts
+      summary: Clear all memory facts for the current user
+      responses:
+        '204':
+          description: All facts cleared.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /memory/{id}:
+    delete:
+      tags: [Memory]
+      operationId: deleteMemoryFact
+      summary: Delete a single memory fact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Fact deleted.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /scans/analyze:
+    post:
+      tags: [Scans]
+      operationId: analyzeScan
+      summary: Analyze a food photo with vision AI and persist the result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanInput'
+      responses:
+        '200':
+          description: Analysis complete.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scan'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '502':
+          description: AI provider error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /scans:
+    get:
+      tags: [Scans]
+      operationId: listScans
+      summary: List the user's scan history
+      responses:
+        '200':
+          description: Scans loaded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Scan'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /scans/{id}:
+    get:
+      tags: [Scans]
+      operationId: getScan
+      summary: Get a single scan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Scan loaded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scan'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags: [Scans]
+      operationId: deleteScan
+      summary: Delete a scan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /fridge:
+    get:
+      tags: [Fridge]
+      operationId: listFridgeItems
+      summary: List items in MyFridge
+      responses:
+        '200':
+          description: Items loaded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FridgeItem'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      tags: [Fridge]
+      operationId: createFridgeItem
+      summary: Add an item to MyFridge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FridgeItemInput'
+      responses:
+        '201':
+          description: Item created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FridgeItem'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /fridge/{id}:
+    patch:
+      tags: [Fridge]
+      operationId: updateFridgeItem
+      summary: Update a MyFridge item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FridgeItemUpdate'
+      responses:
+        '200':
+          description: Item updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FridgeItem'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags: [Fridge]
+      operationId: deleteFridgeItem
+      summary: Delete a MyFridge item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /fridge/from-image:
+    post:
+      tags: [Fridge]
+      operationId: addFridgeItemsFromImage
+      summary: Detect ingredients from a photo and add them to MyFridge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanInput'
+      responses:
+        '200':
+          description: Items detected and added.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FridgeItem'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '502':
+          description: AI provider error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /fridge/recipes:
+    post:
+      tags: [Fridge]
+      operationId: generateFridgeRecipes
+      summary: Generate AI recipes from current MyFridge contents and user memory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeRequest'
+      responses:
+        '200':
+          description: Recipes generated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Recipe'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '502':
+          description: AI provider error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /home/summary:
+    get:
+      tags: [Home]
+      operationId: getHomeSummary
+      summary: Today's nutrition summary and recent activity
+      responses:
+        '200':
+          description: Summary loaded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HomeSummary'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /home/suggestions:
+    get:
+      tags: [Home]
+      operationId: getHomeSuggestions
+      summary: Personalised AI meal and snack suggestions
+      responses:
+        '200':
+          description: Suggestions generated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Suggestion'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '502':
+          description: AI provider error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
 components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque session token — `Bearer <sid>`.
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: Browser session cookie.
+      schema:
+        type: string
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +634,304 @@ components:
           type: string
       required:
         - status
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
 
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id: { type: string }
+        email: { type: [string, 'null'], format: email }
+        firstName: { type: [string, 'null'] }
+        lastName: { type: [string, 'null'] }
+        profileImageUrl: { type: [string, 'null'] }
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code: { type: string, minLength: 1 }
+        code_verifier: { type: string, minLength: 1 }
+        redirect_uri: { type: string, minLength: 1, format: uri }
+        state: { type: string, minLength: 1 }
+        nonce: { type: string, minLength: 1 }
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean, const: true }
+
+    UserProfile:
+      type: object
+      required:
+        - userId
+        - displayName
+        - dietaryStyle
+        - allergies
+        - dislikes
+        - healthGoals
+        - dailyCalorieTarget
+        - cuisinePreferences
+      properties:
+        userId: { type: string }
+        displayName: { type: [string, 'null'] }
+        dietaryStyle:
+          type: string
+          description: e.g. omnivore, vegetarian, vegan, pescatarian, keto, paleo.
+        allergies:
+          type: array
+          items: { type: string }
+        dislikes:
+          type: array
+          items: { type: string }
+        healthGoals: { type: [string, 'null'] }
+        dailyCalorieTarget: { type: [integer, 'null'] }
+        cuisinePreferences:
+          type: array
+          items: { type: string }
+    UserProfileUpdate:
+      type: object
+      properties:
+        displayName: { type: [string, 'null'] }
+        dietaryStyle: { type: string }
+        allergies:
+          type: array
+          items: { type: string }
+        dislikes:
+          type: array
+          items: { type: string }
+        healthGoals: { type: [string, 'null'] }
+        dailyCalorieTarget: { type: [integer, 'null'] }
+        cuisinePreferences:
+          type: array
+          items: { type: string }
+
+    MemoryFact:
+      type: object
+      required: [id, category, content, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        category:
+          type: string
+          description: e.g. preference, allergy, goal, dislike, routine.
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+    MemoryFactInput:
+      type: object
+      required: [category, content]
+      properties:
+        category:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+
+    ScanInput:
+      type: object
+      required: [imageDataUrl]
+      properties:
+        imageDataUrl:
+          type: string
+          description: Base64-encoded image as a data URL (e.g. `data:image/jpeg;base64,...`).
+          minLength: 1
+        note:
+          type: string
+          description: Optional user note to bias analysis (e.g. "lunch portion").
+    ScanIngredient:
+      type: object
+      required: [name, amount]
+      properties:
+        name: { type: string }
+        amount: { type: string }
+    Scan:
+      type: object
+      required:
+        - id
+        - userId
+        - imageDataUrl
+        - foodName
+        - description
+        - calories
+        - protein
+        - carbs
+        - fat
+        - fiber
+        - sugar
+        - healthScore
+        - ingredients
+        - tags
+        - createdAt
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string }
+        imageDataUrl: { type: string }
+        foodName: { type: string }
+        description: { type: string }
+        calories: { type: integer }
+        protein: { type: number }
+        carbs: { type: number }
+        fat: { type: number }
+        fiber: { type: number }
+        sugar: { type: number }
+        healthScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanIngredient'
+        tags:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    FridgeItem:
+      type: object
+      required:
+        - id
+        - userId
+        - name
+        - quantity
+        - category
+        - addedAt
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string }
+        name: { type: string }
+        quantity: { type: string }
+        category:
+          type: string
+          description: e.g. produce, dairy, meat, pantry, beverage.
+        expiresAt: { type: [string, 'null'], format: date-time }
+        notes: { type: [string, 'null'] }
+        addedAt: { type: string, format: date-time }
+    FridgeItemInput:
+      type: object
+      required: [name, quantity, category]
+      properties:
+        name: { type: string, minLength: 1 }
+        quantity: { type: string, minLength: 1 }
+        category: { type: string, minLength: 1 }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        notes: { type: [string, 'null'] }
+    FridgeItemUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        quantity: { type: string, minLength: 1 }
+        category: { type: string, minLength: 1 }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        notes: { type: [string, 'null'] }
+
+    RecipeRequest:
+      type: object
+      properties:
+        cuisine:
+          type: string
+          description: Optional cuisine preference (e.g. "italian", "thai").
+        maxMinutes:
+          type: integer
+          minimum: 5
+          maximum: 240
+          description: Maximum total cook time in minutes.
+    Recipe:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - estimatedMinutes
+        - servings
+        - calories
+        - usedIngredients
+        - missingIngredients
+        - steps
+        - tags
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        estimatedMinutes: { type: integer }
+        servings: { type: integer }
+        calories: { type: integer }
+        usedIngredients:
+          type: array
+          items: { type: string }
+        missingIngredients:
+          type: array
+          items: { type: string }
+        steps:
+          type: array
+          items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+
+    HomeSummary:
+      type: object
+      required:
+        - todayCalories
+        - todayProtein
+        - todayCarbs
+        - todayFat
+        - calorieTarget
+        - recentScans
+        - expiringItems
+        - fridgeItemCount
+        - scanCount
+      properties:
+        todayCalories: { type: integer }
+        todayProtein: { type: number }
+        todayCarbs: { type: number }
+        todayFat: { type: number }
+        calorieTarget: { type: [integer, 'null'] }
+        recentScans:
+          type: array
+          items:
+            $ref: '#/components/schemas/Scan'
+        expiringItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/FridgeItem'
+        fridgeItemCount: { type: integer }
+        scanCount: { type: integer }
+
+    Suggestion:
+      type: object
+      required:
+        - id
+        - title
+        - reason
+        - kind
+        - estimatedCalories
+        - tags
+      properties:
+        id: { type: string }
+        title: { type: string }
+        reason: { type: string }
+        kind:
+          type: string
+          description: e.g. meal, snack, recipe, restock, habit.
+        estimatedCalories: { type: [integer, 'null'] }
+        tags:
+          type: array
+          items: { type: string }

@@ -12,7 +12,9 @@
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "@workspace/integrations-openrouter-ai": "workspace:*",
     "cookie-parser": "^1.4.7",
+    "openid-client": "^6.6.4",
     "cors": "^2",
     "drizzle-orm": "catalog:",
     "express": "^5",
