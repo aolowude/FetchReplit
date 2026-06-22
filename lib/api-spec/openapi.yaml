@@ -25,60 +25,6 @@ tags:
   - name: Storage
     description: Object storage upload and serving endpoints.
 paths:
-  /storage/uploads/request-url:
-    post:
-      tags: [Storage]
-      operationId: requestUploadUrl
-      summary: Request a presigned URL for file upload
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UploadUrlRequest'
-      responses:
-        '200':
-          description: Presigned upload URL generated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UploadUrlResponse'
-        '400':
-          description: Invalid request.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-  /storage/uploads/finalize:
-    post:
-      tags: [Storage]
-      operationId: finalizeUpload
-      summary: Finalize an upload by binding ownership ACL to the uploaded object
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FinalizeUploadInput'
-      responses:
-        '200':
-          description: ACL bound successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FinalizeUploadResult'
-        '401':
-          description: Unauthorized.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '404':
-          description: Object not found.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
   /home/recipes:
     get:
       tags: [Home]
@@ -859,31 +805,6 @@ components:
           description: e.g. preference, allergy, goal, dislike, routine.
         content: { type: string }
         createdAt: { type: string, format: date-time }
-    UploadUrlRequest:
-      type: object
-      required: [name, size, contentType]
-      properties:
-        name: { type: string, minLength: 1 }
-        size: { type: integer, minimum: 1 }
-        contentType: { type: string, minLength: 1 }
-    UploadUrlResponse:
-      type: object
-      required: [uploadURL, objectPath]
-      properties:
-        uploadURL: { type: string, format: uri }
-        objectPath: { type: string }
-        metadata:
-          $ref: '#/components/schemas/UploadUrlRequest'
-    FinalizeUploadInput:
-      type: object
-      required: [objectPath]
-      properties:
-        objectPath: { type: string, minLength: 1 }
-    FinalizeUploadResult:
-      type: object
-      required: [objectPath]
-      properties:
-        objectPath: { type: string }
     HomeRecipeIdea:
       type: object
       required: [id, title, reason, usedIngredients, missingIngredients, minutes]
@@ -929,12 +850,12 @@ components:
 
     ScanInput:
       type: object
-      required: [imageObjectPath]
+      required: [imageDataUrl]
       properties:
-        imageObjectPath:
+        imageDataUrl:
           type: string
-          description: Object path returned from `POST /storage/uploads/request-url` after the client PUTs the photo to GCS.
-          minLength: 1
+          format: uri
+          description: Resized photo as a `data:image/...;base64,...` URL sent directly from the client.
         note:
           type: string
           description: Optional user note to bias analysis (e.g. "lunch portion").
@@ -968,7 +889,7 @@ components:
       required:
         - id
         - userId
-        - imageObjectPath
+        - imageDataUrl
         - foodName
         - description
         - calories
@@ -987,9 +908,9 @@ components:
       properties:
         id: { type: string, format: uuid }
         userId: { type: string }
-        imageObjectPath:
-          type: string
-          description: Object storage path of the uploaded photo, e.g. `/objects/uploads/uuid`. Serve via `GET /api/storage{imageObjectPath}`.
+        imageDataUrl:
+          type: [string, 'null']
+          description: Resized photo as a `data:image/...;base64,...` URL stored on the row. Null for older rows.
         foodName: { type: string }
         description: { type: string }
         calories: { type: integer }
@@ -1041,6 +962,9 @@ components:
           description: e.g. produce, dairy, meat, pantry, beverage.
         expiresAt: { type: [string, 'null'], format: date-time }
         notes: { type: [string, 'null'] }
+        imageDataUrl:
+          type: [string, 'null']
+          description: Resized photo as a `data:image/...;base64,...` URL. Only set for items added via "Scan ingredients".
         addedAt: { type: string, format: date-time }
     FridgeItemInput:
       type: object

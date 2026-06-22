@@ -270,7 +270,7 @@ export default function HomePage() {
             ) : (
               <ul className="space-y-2">
                 {summary!.recentScans.map((s) => {
-                  const url = objectPathToUrl(s.imageObjectPath);
+                  const url = objectPathToUrl(s.imageDataUrl);
                   return (
                     <li key={s.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors" data-testid={`row-scan-${s.id}`}>
                       <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0">

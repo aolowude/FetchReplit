@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { Readable } from "node:stream";
+import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import {
   db,
@@ -10,16 +10,20 @@ import {
   type DietaryCompliance,
   type AllergenWarning,
 } from "@workspace/db";
-import { AnalyzeScanBody } from "@workspace/api-zod";
 import { chatJson, AiError } from "../lib/ai";
 import { logMemoryEvent } from "../lib/memoryEvents";
 import { logger } from "../lib/logger";
-import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-import { ObjectPermission } from "../lib/objectAcl";
 import { appendMemoryItem, loadMemory } from "./memory";
 
+// Local-mode body schema. The codegen-generated AnalyzeScanBody expects
+// `imageObjectPath` (Replit object storage); in local mode the client sends
+// the resized image as a data URL directly.
+const AnalyzeScanBodyLocal = z.object({
+  imageDataUrl: z.string().min(1),
+  note: z.string().optional(),
+});
+
 const router: IRouter = Router();
-const objectStorageService = new ObjectStorageService();
 
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.isAuthenticated()) {
@@ -43,6 +47,7 @@ function toResponse(row: ScanRow) {
     id: row.id,
     userId: row.userId,
     imageObjectPath: row.imageObjectPath,
+    imageDataUrl: row.imageDataUrl,
     foodName: row.foodName,
     description: row.description,
     calories: row.calories,
@@ -102,22 +107,6 @@ function normaliseAllergens(input: AllergenWarning[] | undefined): AllergenWarni
     .slice(0, 10);
 }
 
-async function objectPathToDataUrl(objectPath: string, userId: string): Promise<string> {
-  const file = await objectStorageService.getObjectEntityFile(objectPath);
-  const canAccess = await objectStorageService.canAccessObjectEntity({
-    userId,
-    objectFile: file,
-    requestedPermission: ObjectPermission.READ,
-  });
-  if (!canAccess) {
-    throw new ObjectNotFoundError();
-  }
-  const [meta] = await file.getMetadata();
-  const contentType = String(meta.contentType ?? "image/jpeg");
-  const [buffer] = await file.download();
-  return `data:${contentType};base64,${buffer.toString("base64")}`;
-}
-
 interface InferredFact {
   category: string;
   content: string;
@@ -154,27 +143,14 @@ This meal: ${scan.foodName} — ${scan.description}. Tags: ${scan.tags.join(", "
 
 router.post("/scans/analyze", requireAuth, async (req: Request, res: Response) => {
   const user = req.user!;
-  const parsed = AnalyzeScanBody.safeParse(req.body);
+  const parsed = AnalyzeScanBodyLocal.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "bad_request", message: parsed.error.message });
     return;
   }
-  const { imageObjectPath, note } = parsed.data;
-  if (!imageObjectPath.startsWith("/objects/")) {
-    res.status(400).json({ error: "bad_request", message: "imageObjectPath must be an object storage path." });
-    return;
-  }
-
-  let imageDataUrl: string;
-  try {
-    imageDataUrl = await objectPathToDataUrl(imageObjectPath, user.id);
-  } catch (err) {
-    if (err instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: "not_found", message: "Uploaded image not found." });
-      return;
-    }
-    logger.error({ err, userId: user.id }, "failed to load uploaded image");
-    res.status(500).json({ error: "storage_error", message: "Could not read uploaded image." });
+  const { imageDataUrl, note } = parsed.data;
+  if (!imageDataUrl || !imageDataUrl.startsWith("data:image/")) {
+    res.status(400).json({ error: "bad_request", message: "imageDataUrl must be a data:image/* URL." });
     return;
   }
 
@@ -212,7 +188,7 @@ router.post("/scans/analyze", requireAuth, async (req: Request, res: Response) =
     .insert(scansTable)
     .values({
       userId: user.id,
-      imageObjectPath,
+      imageDataUrl,
       foodName: String(analysis.foodName ?? "Unknown dish"),
       description: String(analysis.description ?? ""),
       calories: Math.max(0, Math.round(Number(analysis.calories) || 0)),

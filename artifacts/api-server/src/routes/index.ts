@@ -6,7 +6,6 @@ import memoryRouter from "./memory";
 import scansRouter from "./scans";
 import fridgeRouter from "./fridge";
 import homeRouter from "./home";
-import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -17,6 +16,5 @@ router.use(memoryRouter);
 router.use(scansRouter);
 router.use(fridgeRouter);
 router.use(homeRouter);
-router.use(storageRouter);
 
 export default router;

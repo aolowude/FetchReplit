@@ -14,6 +14,9 @@ export const fridgeItemsTable = pgTable(
     category: text("category").notNull().default("pantry"),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     notes: text("notes"),
+    // Local (off-Replit) mode: items added via "Scan ingredients" store the
+    // resized photo as a base64 data URL on the row.
+    imageDataUrl: text("image_data_url"),
     addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("idx_fridge_user_added").on(table.userId, table.addedAt)],

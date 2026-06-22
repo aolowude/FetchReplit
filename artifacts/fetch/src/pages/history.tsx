@@ -85,7 +85,7 @@ export default function HistoryPage() {
             >
               <div className="aspect-[4/3] bg-muted">
                 {(() => {
-                  const url = objectPathToUrl(s.imageObjectPath);
+                  const url = objectPathToUrl(s.imageDataUrl);
                   return url ? <img src={url} alt={s.foodName} className="w-full h-full object-cover" loading="lazy" /> : null;
                 })()}
               </div>
@@ -115,7 +115,7 @@ export default function HistoryPage() {
               </SheetHeader>
               <div className="mt-4 space-y-4">
                 {(() => {
-                  const url = objectPathToUrl(active.imageObjectPath);
+                  const url = objectPathToUrl(active.imageDataUrl);
                   return url ? <img src={url} alt={active.foodName} className="w-full rounded-2xl" /> : null;
                 })()}
                 <div className="flex items-center gap-4">

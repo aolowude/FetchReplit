@@ -152,30 +152,6 @@ export interface MemoryFact {
   createdAt: string;
 }
 
-export interface UploadUrlRequest {
-  /** @minLength 1 */
-  name: string;
-  /** @minimum 1 */
-  size: number;
-  /** @minLength 1 */
-  contentType: string;
-}
-
-export interface UploadUrlResponse {
-  uploadURL: string;
-  objectPath: string;
-  metadata?: UploadUrlRequest;
-}
-
-export interface FinalizeUploadInput {
-  /** @minLength 1 */
-  objectPath: string;
-}
-
-export interface FinalizeUploadResult {
-  objectPath: string;
-}
-
 export interface HomeRecipeIdea {
   id: string;
   title: string;
@@ -207,11 +183,8 @@ export interface MemoryFactInput {
 }
 
 export interface ScanInput {
-  /**
-   * Object path returned from `POST /storage/uploads/request-url` after the client PUTs the photo to GCS.
-   * @minLength 1
-   */
-  imageObjectPath: string;
+  /** Resized photo as a `data:image/...;base64,...` URL sent directly from the client. */
+  imageDataUrl: string;
   /** Optional user note to bias analysis (e.g. "lunch portion"). */
   note?: string;
 }
@@ -248,8 +221,11 @@ export interface AllergenWarning {
 export interface Scan {
   id: string;
   userId: string;
-  /** Object storage path of the uploaded photo, e.g. `/objects/uploads/uuid`. Serve via `GET /api/storage{imageObjectPath}`. */
-  imageObjectPath: string;
+  /**
+   * Resized photo as a `data:image/...;base64,...` URL stored on the row. Null for older rows.
+   * @nullable
+   */
+  imageDataUrl: string | null;
   foodName: string;
   description: string;
   calories: number;
@@ -287,6 +263,11 @@ export interface FridgeItem {
   expiresAt?: string | null;
   /** @nullable */
   notes?: string | null;
+  /**
+   * Resized photo as a `data:image/...;base64,...` URL. Only set for items added via "Scan ingredients".
+   * @nullable
+   */
+  imageDataUrl?: string | null;
   addedAt: string;
 }
 

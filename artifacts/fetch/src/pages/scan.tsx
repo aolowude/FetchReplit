@@ -16,12 +16,12 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, ImagePlus, RotateCcw, AlertTriangle, Leaf, CheckCircle2, X } from "lucide-react";
 import { HealthRing } from "@/components/health-ring";
-import { fileToResizedBlob, fileToResizedDataUrl, objectPathToUrl, uploadImageToObjectStorage } from "@/lib/image";
+import { fileToResizedDataUrl, objectPathToUrl } from "@/lib/image";
 
 export default function ScanPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
+  const [pendingDataUrl, setPendingDataUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [note, setNote] = useState("");
   const [scan, setScan] = useState<Scan | null>(null);
@@ -32,12 +32,9 @@ export default function ScanPage() {
 
   async function onPick(file: File) {
     try {
-      const [dataUrl, blob] = await Promise.all([
-        fileToResizedDataUrl(file),
-        fileToResizedBlob(file),
-      ]);
+      const dataUrl = await fileToResizedDataUrl(file);
       setPreviewUrl(dataUrl);
-      setPendingBlob(blob);
+      setPendingDataUrl(dataUrl);
       setScan(null);
     } catch (err) {
       toast({ title: "Couldn't read that image", description: String(err), variant: "destructive" });
@@ -46,26 +43,19 @@ export default function ScanPage() {
 
   function reset() {
     setPreviewUrl(null);
-    setPendingBlob(null);
+    setPendingDataUrl(null);
     setNote("");
     setScan(null);
     if (inputRef.current) inputRef.current.value = "";
   }
 
   async function submit() {
-    if (!pendingBlob) return;
+    if (!pendingDataUrl) return;
     setUploading(true);
-    let objectPath: string;
-    try {
-      objectPath = await uploadImageToObjectStorage(pendingBlob, "scan.jpg");
-    } catch (err) {
-      setUploading(false);
-      toast({ title: "Upload failed", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
-      return;
-    }
+    const dataUrl = pendingDataUrl;
     setUploading(false);
     analyze.mutate(
-      { data: { imageObjectPath: objectPath, note: note || undefined } },
+      { data: { imageDataUrl: dataUrl, note: note || undefined } },
       {
         onSuccess: (result) => {
           setScan(result);
@@ -82,7 +72,7 @@ export default function ScanPage() {
   }
 
   const busy = uploading || analyze.isPending;
-  const scanImageUrl = scan ? objectPathToUrl(scan.imageObjectPath) : undefined;
+  const scanImageUrl = scan ? objectPathToUrl(scan.imageDataUrl) : undefined;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">

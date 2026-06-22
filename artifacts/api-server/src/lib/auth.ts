@@ -20,9 +20,15 @@ let oidcConfig: client.Configuration | null = null;
 
 export async function getOidcConfig(): Promise<client.Configuration> {
   if (!oidcConfig) {
+    if (!process.env.REPL_ID) {
+      throw new Error(
+        "REPL_ID is not set. The Replit OIDC client cannot be configured. " +
+          "Set DEV_AUTH=1 in .env to use the local dev auth shim instead.",
+      );
+    }
     oidcConfig = await client.discovery(
       new URL(ISSUER_URL),
-      process.env.REPL_ID!,
+      process.env.REPL_ID,
     );
   }
   return oidcConfig;

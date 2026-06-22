@@ -20,8 +20,6 @@ import type {
   AuthUserEnvelope,
   BeginBrowserLoginParams,
   ErrorEnvelope,
-  FinalizeUploadInput,
-  FinalizeUploadResult,
   FridgeItem,
   FridgeItemInput,
   FridgeItemUpdate,
@@ -39,8 +37,6 @@ import type {
   Scan,
   ScanInput,
   Suggestion,
-  UploadUrlRequest,
-  UploadUrlResponse,
   UserMemory,
   UserProfile,
   UserProfileUpdate,
@@ -54,178 +50,6 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
-
-/**
- * @summary Request a presigned URL for file upload
- */
-export const getRequestUploadUrlUrl = () => {
-  return `/api/storage/uploads/request-url`;
-};
-
-export const requestUploadUrl = async (
-  uploadUrlRequest: UploadUrlRequest,
-  options?: RequestInit,
-): Promise<UploadUrlResponse> => {
-  return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(uploadUrlRequest),
-  });
-};
-
-export const getRequestUploadUrlMutationOptions = <
-  TError = ErrorType<ErrorEnvelope>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof requestUploadUrl>>,
-    TError,
-    { data: BodyType<UploadUrlRequest> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof requestUploadUrl>>,
-  TError,
-  { data: BodyType<UploadUrlRequest> },
-  TContext
-> => {
-  const mutationKey = ["requestUploadUrl"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof requestUploadUrl>>,
-    { data: BodyType<UploadUrlRequest> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return requestUploadUrl(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type RequestUploadUrlMutationResult = NonNullable<
-  Awaited<ReturnType<typeof requestUploadUrl>>
->;
-export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>;
-export type RequestUploadUrlMutationError = ErrorType<ErrorEnvelope>;
-
-/**
- * @summary Request a presigned URL for file upload
- */
-export const useRequestUploadUrl = <
-  TError = ErrorType<ErrorEnvelope>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof requestUploadUrl>>,
-    TError,
-    { data: BodyType<UploadUrlRequest> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof requestUploadUrl>>,
-  TError,
-  { data: BodyType<UploadUrlRequest> },
-  TContext
-> => {
-  return useMutation(getRequestUploadUrlMutationOptions(options));
-};
-
-/**
- * @summary Finalize an upload by binding ownership ACL to the uploaded object
- */
-export const getFinalizeUploadUrl = () => {
-  return `/api/storage/uploads/finalize`;
-};
-
-export const finalizeUpload = async (
-  finalizeUploadInput: FinalizeUploadInput,
-  options?: RequestInit,
-): Promise<FinalizeUploadResult> => {
-  return customFetch<FinalizeUploadResult>(getFinalizeUploadUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(finalizeUploadInput),
-  });
-};
-
-export const getFinalizeUploadMutationOptions = <
-  TError = ErrorType<ErrorEnvelope>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof finalizeUpload>>,
-    TError,
-    { data: BodyType<FinalizeUploadInput> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof finalizeUpload>>,
-  TError,
-  { data: BodyType<FinalizeUploadInput> },
-  TContext
-> => {
-  const mutationKey = ["finalizeUpload"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof finalizeUpload>>,
-    { data: BodyType<FinalizeUploadInput> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return finalizeUpload(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type FinalizeUploadMutationResult = NonNullable<
-  Awaited<ReturnType<typeof finalizeUpload>>
->;
-export type FinalizeUploadMutationBody = BodyType<FinalizeUploadInput>;
-export type FinalizeUploadMutationError = ErrorType<ErrorEnvelope>;
-
-/**
- * @summary Finalize an upload by binding ownership ACL to the uploaded object
- */
-export const useFinalizeUpload = <
-  TError = ErrorType<ErrorEnvelope>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof finalizeUpload>>,
-    TError,
-    { data: BodyType<FinalizeUploadInput> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof finalizeUpload>>,
-  TError,
-  { data: BodyType<FinalizeUploadInput> },
-  TContext
-> => {
-  return useMutation(getFinalizeUploadMutationOptions(options));
-};
 
 /**
  * @summary Quick recipe ideas based on what's in the fridge
