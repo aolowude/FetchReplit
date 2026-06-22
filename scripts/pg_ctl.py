@@ -57,7 +57,13 @@ def venv_pip() -> list[str]:
 
 
 def ensure_venv() -> None:
-    """Create the venv and install pgserver + psycopg if missing."""
+    """Create the venv and install pgserver + psycopg if missing.
+
+    Re-execs the current process under the venv's Python once the venv is
+    ready. That way all subsequent imports (psycopg, pgserver) resolve
+    inside the venv, even when this script was originally launched with
+    the system Python.
+    """
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     (RUN_DIR / "logs").mkdir(parents=True, exist_ok=True)
 
@@ -68,7 +74,13 @@ def ensure_venv() -> None:
             check=True,
         )
 
-    # Check installed packages
+    # If we're not already running under the venv, re-exec now.
+    if Path(sys.executable).resolve() != Path(venv_python()).resolve():
+        print("[pg] re-launching under venv Python …", flush=True)
+        os.execv(venv_python(), [venv_python(), __file__, *sys.argv[1:]])
+        # execv does not return on success.
+
+    # Check installed packages.
     try:
         out = subprocess.run(
             [*venv_pip(), "show", "pgserver"],
