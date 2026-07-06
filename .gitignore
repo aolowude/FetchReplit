@@ -47,3 +47,11 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Local dev runtime: PID files, logs, embedded Postgres data, venv
+/.run/
+/.venv/
+/.python-version
+
+# Secrets — use .env.example as a template
+.env
