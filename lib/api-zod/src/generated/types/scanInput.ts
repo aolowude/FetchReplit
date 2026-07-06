@@ -7,11 +7,8 @@
  */
 
 export interface ScanInput {
-  /**
-   * Object path returned from `POST /storage/uploads/request-url` after the client PUTs the photo to GCS.
-   * @minLength 1
-   */
-  imageObjectPath: string;
+  /** Resized photo as a `data:image/...;base64,...` URL sent directly from the client. */
+  imageDataUrl: string;
   /** Optional user note to bias analysis (e.g. "lunch portion"). */
   note?: string;
 }

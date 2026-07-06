@@ -18,6 +18,7 @@ import {
   ISSUER_URL,
   type SessionData,
 } from "../lib/auth";
+import { DEV_AUTH_ENABLED, getDevUser } from "../lib/devAuth";
 
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
@@ -91,6 +92,15 @@ router.get("/auth/user", (req: Request, res: Response) => {
 });
 
 router.get("/login", async (req: Request, res: Response) => {
+  // In dev mode there's no OIDC dance; just bounce back to the app. The
+  // authMiddleware has already populated req.user with the dev user, so the
+  // app sees the user as signed in.
+  if (DEV_AUTH_ENABLED) {
+    const returnTo = getSafeReturnTo(req.query.returnTo);
+    res.redirect(returnTo);
+    return;
+  }
+
   const config = await getOidcConfig();
   const callbackUrl = `${getOrigin(req)}/api/callback`;
 
@@ -188,11 +198,17 @@ router.get("/callback", async (req: Request, res: Response) => {
 });
 
 router.get("/logout", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
-  const origin = getOrigin(req);
-
   const sid = getSessionId(req);
   await clearSession(res, sid);
+
+  // In dev mode there's no OIDC end-session endpoint to call.
+  if (DEV_AUTH_ENABLED) {
+    res.redirect("/login");
+    return;
+  }
+
+  const config = await getOidcConfig();
+  const origin = getOrigin(req);
 
   const endSessionUrl = oidc.buildEndSessionUrl(config, {
     client_id: process.env.REPL_ID!,

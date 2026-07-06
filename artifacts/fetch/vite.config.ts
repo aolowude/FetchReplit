@@ -4,13 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+const rawPort = process.env["PORT"] ?? process.env["WEB_PORT"] ?? "5173";
 
 const port = Number(rawPort);
 
@@ -66,6 +60,19 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // In local dev the API lives on a different port (8080). Proxy /api/*
+    // so the client can use same-origin relative URLs like /api/scans/analyze.
+    // On Replit this is unnecessary (everything serves from the same origin
+    // via the proxy), but Vite only honours the proxy config when set.
+    proxy: process.env.API_PORT && process.env.API_PORT !== String(port)
+      ? {
+          "/api": {
+            target: `http://localhost:${process.env.API_PORT}`,
+            changeOrigin: true,
+            secure: false,
+          },
+        }
+      : undefined,
   },
   preview: {
     port,

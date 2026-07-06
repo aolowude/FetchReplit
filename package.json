@@ -6,7 +6,17 @@
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "dev:env": "node ./scripts/load-env.mjs",
+    "dev:all": "node ./scripts/load-env.mjs API_PORT=8080 pnpm --parallel --config.verify-deps-before-run=never --filter @workspace/api-server --filter @workspace/fetch run dev",
+    "dev:api": "node ./scripts/load-env.mjs PORT=8080 pnpm --config.verify-deps-before-run=never --filter @workspace/api-server run dev",
+    "dev:web": "node ./scripts/load-env.mjs PORT=5173 API_PORT=8080 pnpm --config.verify-deps-before-run=never --filter @workspace/fetch run dev",
+    "start": "./scripts/app.sh start",
+    "stop": "./scripts/app.sh stop",
+    "restart": "./scripts/app.sh restart",
+    "status": "./scripts/app.sh status",
+    "logs": "./scripts/app.sh logs",
+    "reset": "./scripts/app.sh reset"
   },
   "private": true,
   "devDependencies": {

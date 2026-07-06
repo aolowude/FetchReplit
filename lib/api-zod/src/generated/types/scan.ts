@@ -12,8 +12,11 @@ import type { ScanIngredient } from "./scanIngredient";
 export interface Scan {
   id: string;
   userId: string;
-  /** Object storage path of the uploaded photo, e.g. `/objects/uploads/uuid`. Serve via `GET /api/storage{imageObjectPath}`. */
-  imageObjectPath: string;
+  /**
+   * Resized photo as a `data:image/...;base64,...` URL stored on the row. Null for older rows.
+   * @nullable
+   */
+  imageDataUrl: string | null;
   foodName: string;
   description: string;
   calories: number;

@@ -8,40 +8,6 @@
 import * as zod from "zod";
 
 /**
- * @summary Request a presigned URL for file upload
- */
-
-export const RequestUploadUrlBody = zod.object({
-  name: zod.string().min(1),
-  size: zod.number().min(1),
-  contentType: zod.string().min(1),
-});
-
-export const RequestUploadUrlResponse = zod.object({
-  uploadURL: zod.string().url(),
-  objectPath: zod.string(),
-  metadata: zod
-    .object({
-      name: zod.string().min(1),
-      size: zod.number().min(1),
-      contentType: zod.string().min(1),
-    })
-    .optional(),
-});
-
-/**
- * @summary Finalize an upload by binding ownership ACL to the uploaded object
- */
-
-export const FinalizeUploadBody = zod.object({
-  objectPath: zod.string().min(1),
-});
-
-export const FinalizeUploadResponse = zod.object({
-  objectPath: zod.string(),
-});
-
-/**
  * @summary Quick recipe ideas based on what's in the fridge
  */
 export const getHomeRecipesResponseMinutesMin = 0;
@@ -355,13 +321,12 @@ export const DeleteMemoryFactParams = zod.object({
 /**
  * @summary Analyze a food photo with vision AI and persist the result
  */
-
 export const AnalyzeScanBody = zod.object({
-  imageObjectPath: zod
+  imageDataUrl: zod
     .string()
-    .min(1)
+    .url()
     .describe(
-      "Object path returned from `POST \/storage\/uploads\/request-url` after the client PUTs the photo to GCS.",
+      "Resized photo as a `data:image\/...;base64,...` URL sent directly from the client.",
     ),
   note: zod
     .string()
@@ -378,10 +343,11 @@ export const analyzeScanResponseEnvironmentalScoreMax = 100;
 export const AnalyzeScanResponse = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  imageObjectPath: zod
+  imageDataUrl: zod
     .string()
+    .nullable()
     .describe(
-      "Object storage path of the uploaded photo, e.g. `\/objects\/uploads\/uuid`. Serve via `GET \/api\/storage{imageObjectPath}`.",
+      "Resized photo as a `data:image\/...;base64,...` URL stored on the row. Null for older rows.",
     ),
   foodName: zod.string(),
   description: zod.string(),
@@ -439,10 +405,11 @@ export const listScansResponseEnvironmentalScoreMax = 100;
 export const ListScansResponseItem = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  imageObjectPath: zod
+  imageDataUrl: zod
     .string()
+    .nullable()
     .describe(
-      "Object storage path of the uploaded photo, e.g. `\/objects\/uploads\/uuid`. Serve via `GET \/api\/storage{imageObjectPath}`.",
+      "Resized photo as a `data:image\/...;base64,...` URL stored on the row. Null for older rows.",
     ),
   foodName: zod.string(),
   description: zod.string(),
@@ -505,10 +472,11 @@ export const getScanResponseEnvironmentalScoreMax = 100;
 export const GetScanResponse = zod.object({
   id: zod.string().uuid(),
   userId: zod.string(),
-  imageObjectPath: zod
+  imageDataUrl: zod
     .string()
+    .nullable()
     .describe(
-      "Object storage path of the uploaded photo, e.g. `\/objects\/uploads\/uuid`. Serve via `GET \/api\/storage{imageObjectPath}`.",
+      "Resized photo as a `data:image\/...;base64,...` URL stored on the row. Null for older rows.",
     ),
   foodName: zod.string(),
   description: zod.string(),
@@ -574,6 +542,12 @@ export const ListFridgeItemsResponseItem = zod.object({
     .describe("e.g. produce, dairy, meat, pantry, beverage."),
   expiresAt: zod.coerce.date().nullish(),
   notes: zod.string().nullish(),
+  imageDataUrl: zod
+    .string()
+    .nullish()
+    .describe(
+      'Resized photo as a `data:image\/...;base64,...` URL. Only set for items added via \"Scan ingredients\".',
+    ),
   addedAt: zod.coerce.date(),
 });
 export const ListFridgeItemsResponse = zod.array(ListFridgeItemsResponseItem);
@@ -615,6 +589,12 @@ export const UpdateFridgeItemResponse = zod.object({
     .describe("e.g. produce, dairy, meat, pantry, beverage."),
   expiresAt: zod.coerce.date().nullish(),
   notes: zod.string().nullish(),
+  imageDataUrl: zod
+    .string()
+    .nullish()
+    .describe(
+      'Resized photo as a `data:image\/...;base64,...` URL. Only set for items added via \"Scan ingredients\".',
+    ),
   addedAt: zod.coerce.date(),
 });
 
@@ -628,13 +608,12 @@ export const DeleteFridgeItemParams = zod.object({
 /**
  * @summary Detect ingredients from a photo and add them to MyFridge
  */
-
 export const AddFridgeItemsFromImageBody = zod.object({
-  imageObjectPath: zod
+  imageDataUrl: zod
     .string()
-    .min(1)
+    .url()
     .describe(
-      "Object path returned from `POST \/storage\/uploads\/request-url` after the client PUTs the photo to GCS.",
+      "Resized photo as a `data:image\/...;base64,...` URL sent directly from the client.",
     ),
   note: zod
     .string()
@@ -652,6 +631,12 @@ export const AddFridgeItemsFromImageResponseItem = zod.object({
     .describe("e.g. produce, dairy, meat, pantry, beverage."),
   expiresAt: zod.coerce.date().nullish(),
   notes: zod.string().nullish(),
+  imageDataUrl: zod
+    .string()
+    .nullish()
+    .describe(
+      'Resized photo as a `data:image\/...;base64,...` URL. Only set for items added via \"Scan ingredients\".',
+    ),
   addedAt: zod.coerce.date(),
 });
 export const AddFridgeItemsFromImageResponse = zod.array(
@@ -712,10 +697,11 @@ export const GetHomeSummaryResponse = zod.object({
     zod.object({
       id: zod.string().uuid(),
       userId: zod.string(),
-      imageObjectPath: zod
+      imageDataUrl: zod
         .string()
+        .nullable()
         .describe(
-          "Object storage path of the uploaded photo, e.g. `\/objects\/uploads\/uuid`. Serve via `GET \/api\/storage{imageObjectPath}`.",
+          "Resized photo as a `data:image\/...;base64,...` URL stored on the row. Null for older rows.",
         ),
       foodName: zod.string(),
       description: zod.string(),
@@ -772,6 +758,12 @@ export const GetHomeSummaryResponse = zod.object({
         .describe("e.g. produce, dairy, meat, pantry, beverage."),
       expiresAt: zod.coerce.date().nullish(),
       notes: zod.string().nullish(),
+      imageDataUrl: zod
+        .string()
+        .nullish()
+        .describe(
+          'Resized photo as a `data:image\/...;base64,...` URL. Only set for items added via \"Scan ingredients\".',
+        ),
       addedAt: zod.coerce.date(),
     }),
   ),

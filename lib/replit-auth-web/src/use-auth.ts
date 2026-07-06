@@ -3,6 +3,20 @@ import type { AuthUser } from "@workspace/api-client-react";
 
 export type { AuthUser };
 
+// In dev mode the API is configured to authenticate every request as a
+// single hard-coded user (DEV_AUTH=1). To keep the React tree unaware of
+// that, we mirror the same flag here: when set, useAuth reports a logged-in
+// dev user immediately and the Login button just navigates home.
+const DEV_AUTH = import.meta.env["VITE_DEV_AUTH"] === "1";
+
+const DEV_USER: AuthUser = {
+  id: "dev-user-local",
+  email: "dev@fetch.local",
+  firstName: "Dev",
+  lastName: "User",
+  profileImageUrl: null,
+};
+
 interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
@@ -12,10 +26,14 @@ interface AuthState {
 }
 
 export function useAuth(): AuthState {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(DEV_AUTH ? DEV_USER : null);
+  const [isLoading, setIsLoading] = useState(!DEV_AUTH);
 
   useEffect(() => {
+    if (DEV_AUTH) {
+      // No need to hit the API — server treats every request as this user.
+      return;
+    }
     let cancelled = false;
 
     fetch("/api/auth/user", { credentials: "include" })
@@ -43,10 +61,19 @@ export function useAuth(): AuthState {
 
   const login = useCallback(() => {
     const base = import.meta.env.BASE_URL.replace(/\/+$/, "") || "/";
+    if (DEV_AUTH) {
+      window.location.href = base || "/";
+      return;
+    }
     window.location.href = `/api/login?returnTo=${encodeURIComponent(base)}`;
   }, []);
 
   const logout = useCallback(() => {
+    if (DEV_AUTH) {
+      // No real session to clear; just go to login.
+      window.location.href = "/login";
+      return;
+    }
     window.location.href = "/api/logout";
   }, []);
 

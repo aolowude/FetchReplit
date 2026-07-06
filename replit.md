@@ -4,6 +4,19 @@ Fetch is an AI-powered food discovery and nutrition PWA. Users sign in, snap a m
 
 ## Run & Operate
 
+### Local development (off-Replit)
+
+1. Copy `.env.example` → `.env` and set:
+   - `DATABASE_URL` — Neon (or any Postgres) connection string; local embedded Postgres is skipped when the host is not `localhost`
+   - `AI_INTEGRATIONS_OPENROUTER_API_KEY` — OpenRouter key for food-scan / recipe AI
+   - `DEV_AUTH=1` and `VITE_DEV_AUTH=1` — bypass Replit OIDC; every request runs as `dev@fetch.local`
+2. Push schema: `pnpm --filter @workspace/db run push` (or let `pnpm start` do it)
+3. Start everything: `pnpm start` (API on 8080, web on 5173)
+4. Or run separately: `pnpm dev:api` / `pnpm dev:web` / `pnpm dev:all`
+5. Stop: `pnpm stop` · Logs: `pnpm logs` · Status: `pnpm status`
+
+### Replit / production
+
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port from `PORT`)
 - `pnpm --filter @workspace/fetch run dev` — run the Fetch web client
 - `pnpm run typecheck` — full typecheck across all packages

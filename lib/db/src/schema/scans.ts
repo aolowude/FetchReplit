@@ -39,7 +39,12 @@ export const scansTable = pgTable(
     userId: varchar("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
-    imageObjectPath: text("image_object_path").notNull().default(""),
+    // Local (off-Replit) mode: store the resized image as a base64 data URL on
+    // the row itself — no external object storage dependency.
+    imageDataUrl: text("image_data_url"),
+    // Legacy Replit object-storage path; kept nullable for back-compat with
+    // older rows. In local mode it's always null.
+    imageObjectPath: text("image_object_path"),
     foodName: text("food_name").notNull(),
     description: text("description").notNull().default(""),
     calories: integer("calories").notNull().default(0),

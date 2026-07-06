@@ -17,5 +17,10 @@ export interface FridgeItem {
   expiresAt?: Date | null;
   /** @nullable */
   notes?: string | null;
+  /**
+   * Resized photo as a `data:image/...;base64,...` URL. Only set for items added via "Scan ingredients".
+   * @nullable
+   */
+  imageDataUrl?: string | null;
   addedAt: Date;
 }
