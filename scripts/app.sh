@@ -167,10 +167,10 @@ cmd_start() {
   echo "$pid" > "$PID_FILE"
 
   # 5. Wait for the API to answer /healthz.
-  say "Waiting for API at http://localhost:$API_PORT/healthz…"
+  say "Waiting for API at http://localhost:$API_PORT/api/healthz…"
   local i
   for i in {1..30}; do
-    if curl -fsS "http://localhost:$API_PORT/healthz" >/dev/null 2>&1; then
+    if curl -fsS "http://localhost:$API_PORT/api/healthz" >/dev/null 2>&1; then
       ok "API is up (pid $pid)"
       printf '%s' "{\"api_pid\":$pid,\"started_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > "$STATUS_FILE"
       printf '\n'

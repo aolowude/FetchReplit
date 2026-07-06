@@ -52,3 +52,6 @@ Thumbs.db
 /.run/
 /.venv/
 /.python-version
+
+# Secrets — use .env.example as a template
+.env
